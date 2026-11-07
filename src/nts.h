@@ -28,7 +28,7 @@ struct Episode {
     QString description;
     QString location;
     QStringList genres;
-    QString cover;       // large artwork URL, embedded in the MP3
+    QString cover;       // large artwork URL, embedded in the saved file
     QString thumbnail;   // small artwork URL, shown in the list
     bool hasAudio = true;
 
@@ -68,9 +68,15 @@ QStringList tracksFromJson(const QByteArray &json);
 // A name every filesystem accepts: no separators or control characters, no
 // leading dot, and short enough to leave room for the directory.
 QString safeFileName(const QString &name);
-// <directory>/<Show>/<YYYY-MM-DD> - <Episode>.mp3
-QString targetPath(const QString &directory, const Episode &episode);
-// The text file saved beside the MP3 when NTS lists the tracks.
+// <directory>/<Show>/<YYYY-MM-DD> - <Episode>, without an extension: the
+// audio keeps whatever format NTS serves, so it's known only once fetched.
+QString targetStem(const QString &directory, const Episode &episode);
+// Audio formats rewind saves, and recognises as already saved (older
+// versions converted everything to MP3).
+QStringList audioExtensions();
+// The episode's audio file if it's on disk in any of those formats, or "".
+QString savedFile(const QString &directory, const Episode &episode);
+// The text file saved beside the audio when NTS lists the tracks.
 QString tracklistText(const Episode &episode, const QStringList &tracks);
 
 }

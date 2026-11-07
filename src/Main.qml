@@ -59,6 +59,28 @@ ApplicationWindow {
             backend.queue.enqueue(e)
     }
 
+    // Plays a saved episode from the archive, or pauses it if it's playing.
+    function playRow(row) {
+        const e = backend.archive.episode(row)
+        const path = backend.savedPath(e)
+        if (path !== "")
+            player.play(path, e.name, e.showName, e.thumbnail, e.alias)
+    }
+
+    // P plays the highlighted episode when it's saved and not already
+    // loaded; otherwise it pauses or resumes whatever is.
+    function playCurrent() {
+        if (episodes.count > 0 && episodes.currentIndex >= 0) {
+            const e = backend.archive.episode(episodes.currentIndex)
+            const path = backend.savedPath(e)
+            if (path !== "" && path !== player.path) {
+                player.play(path, e.name, e.showName, e.thumbnail, e.alias)
+                return
+            }
+        }
+        player.toggle()
+    }
+
     function downloadAll() {
         const list = backend.archive.pending()
         for (let i = 0; i < list.length; ++i)
@@ -75,6 +97,7 @@ ApplicationWindow {
     }
 
     onClosing: (close) => {
+        player.remember()
         if (backend.queue.activeCount > 0 && !win.quitting) {
             close.accepted = false
             quitDialog.open()
@@ -109,6 +132,9 @@ ApplicationWindow {
     Shortcut { sequence: "Space"; context: Qt.ApplicationShortcut; enabled: !win.typing && !win.overlay; onActivated: win.downloadCurrent() }
     Shortcut { sequences: ["J", "Down"]; context: Qt.ApplicationShortcut; enabled: !win.typing && !win.overlay; onActivated: episodes.incrementCurrentIndex() }
     Shortcut { sequences: ["K", "Up"]; context: Qt.ApplicationShortcut; enabled: !win.typing && !win.overlay; onActivated: episodes.decrementCurrentIndex() }
+    Shortcut { sequence: "P"; context: Qt.ApplicationShortcut; enabled: !win.typing && !win.overlay; onActivated: win.playCurrent() }
+    Shortcut { sequence: "Left"; context: Qt.ApplicationShortcut; enabled: !win.typing && !win.overlay && player.loaded; onActivated: player.seekBy(-30000) }
+    Shortcut { sequence: "Right"; context: Qt.ApplicationShortcut; enabled: !win.typing && !win.overlay && player.loaded; onActivated: player.seekBy(30000) }
     Shortcut { sequence: "A"; context: Qt.ApplicationShortcut; enabled: !win.typing && !win.overlay; onActivated: win.downloadAll() }
     Shortcut { sequence: "M"; context: Qt.ApplicationShortcut; enabled: !win.typing && !win.overlay; onActivated: backend.archive.loadMore() }
     Shortcut { sequence: "O"; context: Qt.ApplicationShortcut; enabled: !win.typing && !win.overlay; onActivated: backend.openFolder() }
@@ -299,6 +325,8 @@ ApplicationWindow {
                                 dateText: win.formatDate(model.date)
                                 onPicked: episodes.currentIndex = index
                                 onDownload: backend.queue.enqueue(model.episode)
+                                playing: player.loaded && player.alias === model.alias && player.playing
+                                onPlay: { episodes.currentIndex = index; win.playRow(index) }
                             }
 
                             footer: Item {
@@ -350,7 +378,7 @@ ApplicationWindow {
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
                             color: win.dim
-                            text: qsTr("A show link lists its past episodes to pick from. An episode link starts downloading it straight away. Each one is saved as an MP3 with its artwork, tags, and tracklist.")
+                            text: qsTr("A show link lists its past episodes to pick from. An episode link starts downloading it straight away. Each one is saved in its original quality with its artwork, tags, and tracklist, ready to play here.")
                         }
                         Label {
                             Layout.fillWidth: true
@@ -418,6 +446,8 @@ ApplicationWindow {
                                 onCancel: backend.queue.cancel(index)
                                 onRetry: backend.queue.retry(index)
                                 onReveal: backend.queue.reveal(index)
+                                playing: player.loaded && player.path === model.path && player.playing
+                                onPlay: player.play(model.path, model.title, model.showName, model.thumbnail, model.alias)
                             }
 
                             Label {
@@ -432,6 +462,12 @@ ApplicationWindow {
                         }
                     }
                 }
+            }
+
+            PlayerBar {
+                id: player
+                Layout.fillWidth: true
+                visible: loaded
             }
         }
     }

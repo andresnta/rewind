@@ -30,6 +30,7 @@ QVariant Queue::data(const QModelIndex &index, int role) const
     case PathRole: return d->path();
     case SkippedRole: return d->skipped();
     case AliasRole: return e.alias;
+    case ThumbnailRole: return e.thumbnail;
     }
     return {};
 }
@@ -38,7 +39,7 @@ QHash<int, QByteArray> Queue::roleNames() const
 {
     return {{TitleRole, "title"}, {ShowNameRole, "showName"}, {DateRole, "date"}, {StateRole, "state"},
             {ProgressRole, "progress"}, {ErrorRole, "error"}, {PathRole, "path"}, {SkippedRole, "skipped"},
-            {AliasRole, "alias"}};
+            {AliasRole, "alias"}, {ThumbnailRole, "thumbnail"}};
 }
 
 int Queue::activeCount() const
@@ -65,7 +66,7 @@ QString Queue::statusFor(const QString &show, const QString &alias) const
         case Download::Waiting: return "waiting";
         case Download::Fetching:
         case Download::Downloading:
-        case Download::Converting: return "downloading";
+        case Download::Saving: return "downloading";
         case Download::Done: return "done";
         case Download::Failed: return "failed";
         case Download::Cancelled: return "";

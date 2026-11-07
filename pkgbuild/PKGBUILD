@@ -1,10 +1,10 @@
 pkgname=rewind
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
-pkgdesc='Save past NTS Radio episodes as tagged MP3s for offline listening'
+pkgdesc='Save and play past NTS Radio episodes offline'
 arch=('x86_64' 'aarch64')
 license=('MIT')
-depends=('qt6-base' 'qt6-declarative' 'qt6-wayland' 'yt-dlp' 'ffmpeg')
+depends=('qt6-base' 'qt6-declarative' 'qt6-multimedia' 'qt6-wayland' 'yt-dlp' 'ffmpeg')
 makedepends=('gcc' 'make')
 source=()
 sha256sums=()

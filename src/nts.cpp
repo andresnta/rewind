@@ -1,6 +1,7 @@
 #include "nts.h"
 
 #include <QDateTime>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QRegularExpression>
@@ -178,13 +179,27 @@ QString safeFileName(const QString &name)
     return clean.isEmpty() ? QString("Untitled") : clean;
 }
 
-QString targetPath(const QString &directory, const Episode &episode)
+QString targetStem(const QString &directory, const Episode &episode)
 {
     const QString show = safeFileName(episode.showName.isEmpty() ? episode.show : episode.showName);
     QString file = safeFileName(episode.name.isEmpty() ? episode.alias : episode.name);
     if (!episode.date.isEmpty())
         file = episode.date + " - " + file;
-    return directory + "/" + show + "/" + file + ".mp3";
+    return directory + "/" + show + "/" + file;
+}
+
+QStringList audioExtensions()
+{
+    return {"m4a", "mp3", "opus", "ogg", "webm", "flac"};
+}
+
+QString savedFile(const QString &directory, const Episode &episode)
+{
+    const QString stem = targetStem(directory, episode);
+    for (const auto &extension : audioExtensions())
+        if (QFileInfo::exists(stem + "." + extension))
+            return stem + "." + extension;
+    return {};
 }
 
 QString tracklistText(const Episode &episode, const QStringList &tracks)

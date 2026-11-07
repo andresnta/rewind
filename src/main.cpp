@@ -1,4 +1,4 @@
-// rewind — saves past NTS Radio episodes as tagged MP3s for offline listening.
+// rewind — saves past NTS Radio episodes, with their artwork and tags, for offline listening.
 
 #include <QGuiApplication>
 #include <QIcon>
@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
     app.setApplicationName("rewind");
     app.setOrganizationName("rewind");
-    app.setApplicationVersion("0.1.0");
+    app.setApplicationVersion("0.2.0");
     if (command)
         return Cli::run(arguments);
 

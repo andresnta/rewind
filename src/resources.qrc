@@ -5,6 +5,7 @@
         <file alias="QueueRow.qml">QueueRow.qml</file>
         <file alias="HelpOverlay.qml">HelpOverlay.qml</file>
         <file alias="AccentButton.qml">AccentButton.qml</file>
+        <file alias="PlayerBar.qml">PlayerBar.qml</file>
         <file alias="skill/SKILL.md">skill/SKILL.md</file>
         <file alias="i18n/en.json">i18n/en.json</file>
         <file alias="i18n/da.json">i18n/da.json</file>

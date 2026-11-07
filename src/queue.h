@@ -15,7 +15,7 @@ class Queue : public QAbstractListModel {
 
 public:
     enum Role { TitleRole = Qt::UserRole + 1, ShowNameRole, DateRole, StateRole, ProgressRole, ErrorRole,
-                PathRole, SkippedRole, AliasRole };
+                PathRole, SkippedRole, AliasRole, ThumbnailRole };
 
     Queue(QNetworkAccessManager *network, const Tools &tools, QObject *parent = nullptr);
 

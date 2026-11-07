@@ -8,8 +8,10 @@ Rectangle {
     id: row
     property bool current: false
     property string dateText: ""
+    property bool playing: false
     signal picked()
     signal download()
+    signal play()
 
     implicitHeight: 64
     color: current ? Qt.rgba(1, 1, 1, 0.06) : hover.hovered ? Qt.rgba(1, 1, 1, 0.03) : "transparent"
@@ -26,7 +28,7 @@ Rectangle {
     }
 
     HoverHandler { id: hover }
-    TapHandler { onTapped: row.picked(); onDoubleTapped: if (model.hasAudio) row.download() }
+    TapHandler { onTapped: row.picked(); onDoubleTapped: model.status === "done" ? row.play() : model.hasAudio && model.status === "" ? row.download() : undefined }
 
     RowLayout {
         anchors.fill: parent
@@ -74,10 +76,18 @@ Rectangle {
             color: model.status === "failed" ? "#ff8a80" : model.status === "done" ? theme.accent : "#8a8a93"
             font.pixelSize: 12
             text: !model.hasAudio ? qsTr("No audio")
+                : row.playing ? qsTr("Playing")
                 : model.status === "done" ? qsTr("Saved")
                 : model.status === "downloading" ? qsTr("Downloading")
                 : model.status === "waiting" ? qsTr("Queued")
                 : model.status === "failed" ? qsTr("Failed") : ""
+        }
+        Button {
+            visible: model.status === "done"
+            flat: true
+            text: row.playing ? qsTr("Pause") : qsTr("Play")
+            font.pixelSize: 13
+            onClicked: row.play()
         }
         Button {
             visible: model.hasAudio && (model.status === "" || model.status === "failed")

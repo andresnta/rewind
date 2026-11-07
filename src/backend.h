@@ -2,12 +2,16 @@
 
 #include <QNetworkAccessManager>
 #include <QObject>
+#include <QSettings>
+#include <QUrl>
 
 #include "archive.h"
 #include "queue.h"
 
+#include <memory>
+
 // What the window talks to: the show being browsed, the download queue,
-// and where MP3s are saved.
+// the player, and where episodes are saved.
 class Backend : public QObject {
     Q_OBJECT
     Q_PROPERTY(Archive *archive READ archive CONSTANT)
@@ -38,6 +42,14 @@ public:
     Q_INVOKABLE void checkTools();
     Q_INVOKABLE void clearMessage();
 
+    // The episode's audio on disk, in whatever format it was saved, or "".
+    Q_INVOKABLE QString savedPath(const QVariantMap &episode) const;
+    Q_INVOKABLE QUrl fileUrl(const QString &path) const;
+    // Where playback of a file stopped, so a two-hour show picks up there.
+    Q_INVOKABLE qint64 resumePosition(const QString &path) const;
+    Q_INVOKABLE void savePosition(const QString &path, qint64 milliseconds);
+    Q_INVOKABLE void forgetPosition(const QString &path);
+
 signals:
     void directoryChanged();
     void toolsChanged();
@@ -54,4 +66,7 @@ private:
     Archive m_archive;
     QString m_message;
     bool m_persist;
+    // Positions live apart from the folder setting, and a test run can
+    // point them at a temporary file.
+    std::unique_ptr<QSettings> m_positions;
 };

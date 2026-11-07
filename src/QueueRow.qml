@@ -7,6 +7,8 @@ import QtQuick.Layouts
 Item {
     id: row
     property string dateText: ""
+    property bool playing: false
+    signal play()
     signal cancel()
     signal retry()
     signal reveal()
@@ -14,11 +16,11 @@ Item {
     readonly property int waiting: 0
     readonly property int fetching: 1
     readonly property int downloading: 2
-    readonly property int converting: 3
+    readonly property int saving: 3
     readonly property int done: 4
     readonly property int failed: 5
     readonly property int cancelled: 6
-    readonly property bool active: model.state <= converting
+    readonly property bool active: model.state <= saving
     readonly property string percent: Math.floor(model.progress * 100).toLocaleString(Qt.locale(), 'f', 0)
 
     implicitHeight: column.implicitHeight + 22
@@ -54,6 +56,13 @@ Item {
             }
             Button {
                 flat: true
+                font.pixelSize: 12
+                visible: model.state === row.done && model.path !== ""
+                text: row.playing ? qsTr("Pause") : qsTr("Play")
+                onClicked: row.play()
+            }
+            Button {
+                flat: true
                 Layout.preferredWidth: implicitWidth
                 font.pixelSize: 12
                 visible: row.active || model.state === row.failed || model.state === row.cancelled
@@ -83,7 +92,7 @@ Item {
             text: model.state === row.waiting ? qsTr("Waiting")
                 : model.state === row.fetching ? qsTr("Getting episode details")
                 : model.state === row.downloading ? qsTr("Downloading audio · %1%").arg(row.percent)
-                : model.state === row.converting ? qsTr("Converting to MP3 · %1%").arg(row.percent)
+                : model.state === row.saving ? qsTr("Saving · %1%").arg(row.percent)
                 : model.state === row.done ? (model.skipped ? qsTr("Already saved") : qsTr("Saved"))
                 : model.state === row.failed ? model.error
                 : qsTr("Cancelled")

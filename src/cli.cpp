@@ -212,7 +212,7 @@ QString usage()
            "  rewind episodes <show> [--offset N] [--limit N] [--json]\n"
            "                                            list a show's past episodes\n"
            "  rewind download <episode link>... [--output DIR] [--json]\n"
-           "                                            save episodes as tagged MP3s (default ~/Music/NTS)\n"
+           "                                            save episodes as tagged audio files (default ~/Music/NTS)\n"
            "  rewind skill install                      install the agent skill\n";
 }
 

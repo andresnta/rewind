@@ -36,7 +36,7 @@ Download::Download(const Nts::Episode &episode, const QString &directory, const 
         m_stderr += m_process.readAllStandardError();
         // Only the tail matters for an error message and ffmpeg's duration
         // line comes first, so keep the buffer from growing for hours.
-        if (m_state == Converting)
+        if (m_state == Saving)
             readFfmpeg();
         if (m_stderr.size() > 64 * 1024)
             m_stderr = m_stderr.right(32 * 1024);
@@ -138,11 +138,14 @@ void Download::fetchMetadata()
 
 void Download::fetchExtras()
 {
-    m_path = Nts::targetPath(m_directory, m_episode);
-    if (QFileInfo::exists(m_path)) {
+    // Saved before, in any format, counts: never fetch an episode twice.
+    const QString saved = Nts::savedFile(m_directory, m_episode);
+    if (!saved.isEmpty()) {
+        m_path = saved;
         m_skipped = true;
         return complete();
     }
+    m_stem = Nts::targetStem(m_directory, m_episode);
 
     // Neither the tracklist nor the artwork is worth failing a download over.
     m_pendingExtras = m_episode.cover.isEmpty() ? 1 : 2;
@@ -176,7 +179,7 @@ void Download::runYtDlp()
     // so it's ignored; the progress template gives one parseable line each.
     const QStringList args{
         "--ignore-config", "--no-playlist", "--no-warnings", "--newline", "--progress",
-        "-f", "bestaudio/best",
+        "-f", "bestaudio[ext=m4a]/bestaudio/best",
         "--progress-template",
         "download:@@ %(progress.downloaded_bytes)s %(progress.total_bytes,progress.total_bytes_estimate)s "
         "%(progress.fragment_index)s %(progress.fragment_count)s",
@@ -242,33 +245,43 @@ void Download::readYtDlp()
 
 void Download::runFfmpeg()
 {
-    setState(Converting);
+    setState(Saving);
     m_stdout.clear();
     m_stderr.clear();
     m_duration = 0;
+
+    // The audio is kept exactly as NTS serves it, only rewrapped with tags
+    // and artwork, so there's no second lossy encode. Each format names the
+    // muxer ffmpeg needs, since the .part name hides the extension.
+    QString extension = QFileInfo(m_audio).suffix().toLower();
+    if (extension == "mp4" || extension == "aac")
+        extension = "m4a";
+    static const QHash<QString, QString> muxers{{"m4a", "ipod"}, {"mp3", "mp3"}, {"opus", "opus"},
+                                                {"ogg", "ogg"}, {"webm", "webm"}, {"flac", "flac"}};
+    if (!muxers.contains(extension))
+        return fail(tr("yt-dlp saved a format rewind doesn't know (%1).").arg(extension));
+    m_path = m_stem + "." + extension;
 
     if (!QDir().mkpath(QFileInfo(m_path).absolutePath()))
         return fail(tr("Couldn't create the folder %1.").arg(QFileInfo(m_path).absolutePath()));
 
     const QString part = QFileInfo(m_path).absolutePath() + "/." + QFileInfo(m_path).fileName() + ".part";
-    const bool copyAudio = m_audio.endsWith(".mp3", Qt::CaseInsensitive);
+    // Only MP4, MP3, and FLAC carry cover art as a picture stream.
+    const bool cover = !m_coverFile.isEmpty() && (extension == "m4a" || extension == "mp3" || extension == "flac");
     QStringList args{"-hide_banner", "-nostdin", "-y", "-i", m_audio};
-    if (!m_coverFile.isEmpty())
+    if (cover)
         args << "-i" << m_coverFile;
     args << "-map" << "0:a:0";
-    if (!m_coverFile.isEmpty())
+    if (cover)
         args << "-map" << "1:v:0" << "-c:v" << "mjpeg" << "-disposition:v:0" << "attached_pic"
              << "-metadata:s:v" << "title=Album cover" << "-metadata:s:v" << "comment=Cover (front)";
-    // VBR quality 2 (about 190 kbps) holds everything in NTS's 160 kbps AAC.
-    if (copyAudio)
-        args << "-c:a" << "copy";
-    else
-        args << "-c:a" << "libmp3lame" << "-q:a" << "2";
+    args << "-c:a" << "copy";
+    if (extension == "mp3")
+        args << "-id3v2_version" << "3";
 
     QString comment = m_episode.description;
     comment += (comment.isEmpty() ? "" : "\n\n") + m_episode.pageUrl();
     args << "-map_metadata" << "-1"
-         << "-id3v2_version" << "3"
          << "-metadata" << "title=" + m_episode.name
          << "-metadata" << "artist=" + m_episode.showName
          << "-metadata" << "album=" + m_episode.showName
@@ -278,7 +291,7 @@ void Download::runFfmpeg()
          << "-metadata" << "genre=" + m_episode.genres.join(", ")
          << "-metadata" << "comment=" + comment
          << "-progress" << "pipe:1" << "-nostats"
-         << "-f" << "mp3" << part;
+         << "-f" << muxers.value(extension) << part;
 
     disconnect(&m_process, &QProcess::finished, nullptr, nullptr);
     disconnect(&m_process, &QProcess::errorOccurred, nullptr, nullptr);
@@ -287,17 +300,19 @@ void Download::runFfmpeg()
             fail(tr("Couldn't start ffmpeg."));
     });
     connect(&m_process, &QProcess::finished, this, [this, part](int code, QProcess::ExitStatus status) {
-        if (m_state != Converting)
+        if (m_state != Saving)
             return;
         if (status != QProcess::NormalExit || code != 0) {
             QFile::remove(part);
             const QStringList lines = QString::fromUtf8(m_stderr).split('\n', Qt::SkipEmptyParts);
-            return fail(lines.isEmpty() ? tr("ffmpeg couldn't write the MP3.")
+            return fail(lines.isEmpty() ? tr("ffmpeg couldn't save the audio.")
                                         : tr("ffmpeg: %1").arg(lines.last().trimmed()));
         }
         // Another download of the same episode may have landed meanwhile;
         // never replace a file that's already there.
-        if (QFileInfo::exists(m_path)) {
+        const QString saved = Nts::savedFile(m_directory, m_episode);
+        if (!saved.isEmpty()) {
+            m_path = saved;
             QFile::remove(part);
             m_skipped = true;
             return complete();
@@ -334,7 +349,7 @@ void Download::readFfmpeg()
 void Download::complete()
 {
     if (!m_skipped && !m_tracks.isEmpty()) {
-        const QString path = m_path.left(m_path.size() - 4) + ".txt";
+        const QString path = m_stem + ".txt";
         QSaveFile file(path);
         if (file.open(QIODevice::WriteOnly)) {
             file.write(Nts::tracklistText(m_episode, m_tracks).toUtf8());
@@ -364,7 +379,7 @@ void Download::cancel()
 {
     if (isFinished())
         return;
-    const bool converting = m_state == Converting;
+    const bool converting = m_state == Saving;
     m_state = Cancelled;
     for (const auto &reply : m_replies)
         if (reply)

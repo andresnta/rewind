@@ -20,6 +20,8 @@ Popup {
         ["Enter", qsTr("Open the link")],
         ["J / K", qsTr("Move through episodes")],
         ["Space", qsTr("Download the highlighted episode")],
+        ["P", qsTr("Play or pause the highlighted saved episode")],
+        ["← / →", qsTr("Skip back or forward 30 seconds")],
         ["A", qsTr("Download every listed episode")],
         ["M", qsTr("Load more episodes")],
         ["X", qsTr("Cancel the running download")],

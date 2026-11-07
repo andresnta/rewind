@@ -21,16 +21,16 @@ struct Tools {
     QStringList missing() const;
 };
 
-// One episode on its way to an MP3: fill in missing metadata from the NTS
+// One episode on its way to disk: fill in missing metadata from the NTS
 // API, fetch the tracklist and artwork, have yt-dlp fetch the audio into a
-// temporary directory, and have ffmpeg write a tagged MP3 beside the target
-// before renaming it into place, so a half-written file never carries the
-// real name.
+// temporary directory, and have ffmpeg rewrap it, untouched, with tags and
+// artwork beside the target before renaming it into place, so a half-written
+// file never carries the real name.
 class Download : public QObject {
     Q_OBJECT
 
 public:
-    enum State { Waiting, Fetching, Downloading, Converting, Done, Failed, Cancelled };
+    enum State { Waiting, Fetching, Downloading, Saving, Done, Failed, Cancelled };
     Q_ENUM(State)
 
     Download(const Nts::Episode &episode, const QString &directory, const Tools &tools,
@@ -80,7 +80,7 @@ private:
     QList<QPointer<QNetworkReply>> m_replies;
     QProcess m_process;
     QByteArray m_stdout, m_stderr;
-    QString m_audio, m_coverFile;
+    QString m_stem, m_audio, m_coverFile;
     QStringList m_tracks;
     double m_duration = 0;
     int m_pendingExtras = 0;

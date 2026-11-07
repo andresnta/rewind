@@ -1,5 +1,6 @@
 #include "backend.h"
 
+#include <QCryptographicHash>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
@@ -21,6 +22,47 @@ Backend::Backend(const QString &directory, const Tools &tools, QObject *parent)
     m_queue.setDirectory(m_directory);
 
     connect(&m_queue, &Queue::statusesChanged, &m_archive, &Archive::refreshStatuses);
+
+    m_positions = m_persist ? std::make_unique<QSettings>(QSettings::IniFormat, QSettings::UserScope, "rewind", "positions")
+                            : std::make_unique<QSettings>(m_directory + "/.rewind-positions.ini", QSettings::IniFormat);
+}
+
+QString Backend::savedPath(const QVariantMap &episode) const
+{
+    return Nts::savedFile(m_directory, Nts::Episode::fromMap(episode));
+}
+
+QUrl Backend::fileUrl(const QString &path) const
+{
+    return QUrl::fromLocalFile(path);
+}
+
+// Paths are hashed into keys: QSettings reads slashes as groups.
+static QString positionKey(const QString &path)
+{
+    return QString::fromLatin1(QCryptographicHash::hash(path.toUtf8(), QCryptographicHash::Sha1).toHex());
+}
+
+qint64 Backend::resumePosition(const QString &path) const
+{
+    return path.isEmpty() ? 0 : m_positions->value(positionKey(path), 0).toLongLong();
+}
+
+void Backend::savePosition(const QString &path, qint64 milliseconds)
+{
+    if (path.isEmpty())
+        return;
+    // The first few seconds aren't worth resuming from.
+    if (milliseconds < 5000)
+        m_positions->remove(positionKey(path));
+    else
+        m_positions->setValue(positionKey(path), milliseconds);
+}
+
+void Backend::forgetPosition(const QString &path)
+{
+    if (!path.isEmpty())
+        m_positions->remove(positionKey(path));
 }
 
 QString Backend::defaultDirectory()
@@ -62,7 +104,7 @@ QString Backend::status(const Nts::Episode &episode) const
     const QString queued = m_queue.statusFor(episode.show, episode.alias);
     if (!queued.isEmpty() && queued != "failed")
         return queued;
-    if (QFileInfo::exists(Nts::targetPath(m_directory, episode)))
+    if (!Nts::savedFile(m_directory, episode).isEmpty())
         return "done";
     return queued;
 }

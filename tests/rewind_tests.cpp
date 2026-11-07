@@ -87,10 +87,23 @@ private slots:
 
         Nts::Episode e;
         e.show = "fp"; e.showName = "Floating Points"; e.name = "w/ Guest"; e.date = "2026-09-21";
-        QCOMPARE(Nts::targetPath("/music", e), QString("/music/Floating Points/2026-09-21 - w Guest.mp3"));
+        QCOMPARE(Nts::targetStem("/music", e), QString("/music/Floating Points/2026-09-21 - w Guest"));
     }
 
-    void downloadsTaggedMp3()
+    void findsSavedFilesInAnyFormat()
+    {
+        QTemporaryDir dir;
+        Nts::Episode e;
+        e.show = "fp"; e.showName = "Show"; e.name = "Ep"; e.date = "2026-01-02";
+        QVERIFY(Nts::savedFile(dir.path(), e).isEmpty());
+        QDir().mkpath(dir.filePath("Show"));
+        write(dir.filePath("Show/2026-01-02 - Ep.txt"), "tracks");
+        QVERIFY(Nts::savedFile(dir.path(), e).isEmpty()); // a tracklist alone isn't the episode
+        write(dir.filePath("Show/2026-01-02 - Ep.opus"), "audio");
+        QCOMPARE(Nts::savedFile(dir.path(), e), dir.filePath("Show/2026-01-02 - Ep.opus"));
+    }
+
+    void keepsTheOriginalAudio()
     {
         Fixture f;
         Download job(f.episode(), f.dir.filePath("out"), f.tools(), &f.network);
@@ -100,26 +113,30 @@ private slots:
         QCOMPARE(job.state(), Download::Done);
         QVERIFY2(job.error().isEmpty(), qPrintable(job.error()));
 
-        const QString mp3 = f.dir.filePath("out/Floating Points/2026-09-21 - Floating Points w A Guest.mp3");
-        QCOMPARE(job.path(), mp3);
-        QVERIFY(QFile::exists(mp3));
-        QCOMPARE(job.tracklistPath(), mp3.left(mp3.size() - 4) + ".txt");
+        const QString audio = f.dir.filePath("out/Floating Points/2026-09-21 - Floating Points w A Guest.m4a");
+        QCOMPARE(job.path(), audio);
+        QVERIFY(QFile::exists(audio));
+        QCOMPARE(job.tracklistPath(), audio.left(audio.size() - 4) + ".txt");
         QVERIFY(read(job.tracklistPath()).contains("01. Artist One – First"));
 
-        // The tags, the cover, and the re-encode all reached ffmpeg.
+        // The tags and cover reached ffmpeg, and the audio was copied, not
+        // re-encoded.
         const QString args = read(f.dir.filePath("ffmpeg-args"));
         QVERIFY(args.contains("title=Floating Points w/ A Guest"));
         QVERIFY(args.contains("artist=Floating Points"));
         QVERIFY(args.contains("date=2026-09-21"));
         QVERIFY(args.contains("genre=Funk, Soul"));
         QVERIFY(args.contains("cover.jpg"));
-        QVERIFY(args.contains("libmp3lame"));
+        QVERIFY(args.contains("-c:a\ncopy\n"));
+        QVERIFY(args.contains("-f\nipod\n"));
+        QVERIFY(!args.contains("libmp3lame"));
         // Nothing half-written is left beside it.
         QCOMPARE(QDir(f.dir.filePath("out/Floating Points")).entryList(QDir::Files | QDir::Hidden).size(), 2);
     }
 
     void neverOverwritesASavedEpisode()
     {
+        // An MP3 from before rewind kept originals counts as saved too.
         Fixture f;
         const QString mp3 = f.dir.filePath("out/Floating Points/2026-09-21 - Floating Points w A Guest.mp3");
         QDir().mkpath(QFileInfo(mp3).absolutePath());
@@ -185,7 +202,37 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(job.state(), Download::Downloading, 5000);
         job.cancel();
         QCOMPARE(job.state(), Download::Cancelled);
-        QVERIFY(!QFile::exists(f.dir.filePath("out/Floating Points/2026-09-21 - Floating Points w A Guest.mp3")));
+        QVERIFY(Nts::savedFile(f.dir.filePath("out"), f.episode()).isEmpty());
+    }
+
+    void rejectsFormatsItCantTag()
+    {
+        Fixture f;
+        f.script("yt-dlp", "#!/bin/sh\nwhile [ $# -gt 0 ]; do [ \"$1\" = -o ] && out=\"$2\"; shift; done\n"
+                           "printf x > \"$(echo \"$out\" | sed 's/%(ext)s/xyz/')\"\n");
+        Download job(f.episode(), f.dir.filePath("out"), f.tools(), &f.network);
+        QSignalSpy finished(&job, &Download::finished);
+        job.start();
+        QVERIFY(finished.wait(10000));
+        QCOMPARE(job.state(), Download::Failed);
+        QVERIFY(job.error().contains("xyz"));
+    }
+
+    void remembersWherePlaybackStopped()
+    {
+        QTemporaryDir dir;
+        {
+            Backend backend(dir.path(), Tools{"/bin/true", "/bin/true"});
+            backend.savePosition("/music/a.m4a", 3600000);
+            backend.savePosition("/music/b.m4a", 2000); // too early to bother
+            QCOMPARE(backend.resumePosition("/music/a.m4a"), 3600000);
+            QCOMPARE(backend.resumePosition("/music/b.m4a"), 0);
+        }
+        Backend again(dir.path(), Tools{"/bin/true", "/bin/true"});
+        QCOMPARE(again.resumePosition("/music/a.m4a"), 3600000);
+        again.forgetPosition("/music/a.m4a");
+        QCOMPARE(again.resumePosition("/music/a.m4a"), 0);
+        QCOMPARE(again.fileUrl("/music/a b.m4a"), QUrl("file:///music/a%20b.m4a"));
     }
 
     void queueRunsOneAtATime()
