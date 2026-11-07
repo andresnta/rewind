@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=Rewind
+Name[da]=Rewind
+Name[de]=Rewind
+Name[es_MX]=Rewind
+Comment=Save past NTS Radio episodes as MP3s for offline listening
+Comment[da]=Gem tidligere NTS Radio-afsnit som MP3 til lytning offline
+Comment[de]=Vergangene NTS-Radio-Folgen als MP3 zum Offline-Hören speichern
+Comment[es_MX]=Guarda episodios anteriores de NTS Radio como MP3 para escucharlos sin conexión
+Exec=rewind open %u
+Icon=rewind
+Terminal=false
+Categories=AudioVideo;Audio;Network;
+Keywords=nts;radio;mixcloud;download;mp3;podcast;
+StartupWMClass=rewind

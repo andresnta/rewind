@@ -1,0 +1,7 @@
+{
+  "%n episodes": { "one": "%n episode", "other": "%n episodes" },
+  "%n episodes are still downloading or waiting. Quitting stops them, and anything unfinished is thrown away.": {
+    "one": "An episode is still downloading. Quitting stops it, and the unfinished file is thrown away.",
+    "other": "%n episodes are still downloading or waiting. Quitting stops them, and anything unfinished is thrown away."
+  }
+}
