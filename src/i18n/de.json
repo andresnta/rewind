@@ -80,12 +80,20 @@
   "Play": "Abspielen",
   "Pause": "Pause",
   "Playing": "Läuft",
-  "Can't play this file: %1": "Diese Datei kann nicht abgespielt werden: %1",
   "−30s": "−30 s",
   "+30s": "+30 s",
   "Back 30 seconds (←)": "30 Sekunden zurück (←)",
   "Forward 30 seconds (→)": "30 Sekunden vor (→)",
   "Stop and close the player": "Stoppen und Player schließen",
-  "Play or pause the highlighted saved episode": "Markierte gespeicherte Folge abspielen oder pausieren",
-  "Skip back or forward 30 seconds": "30 Sekunden zurück- oder vorspringen"
+  "Skip back or forward 30 seconds": "30 Sekunden zurück- oder vorspringen",
+  "Can't play this episode: %1": "Diese Folge kann nicht abgespielt werden: %1",
+  "Finding the stream…": "Stream wird gesucht…",
+  "Streaming": "Stream",
+  "Tracks": "Tracks",
+  "Show the tracklist (T)": "Trackliste zeigen (T)",
+  "Show the tracklist": "Trackliste zeigen",
+  "Tracklist": "Trackliste",
+  "Tracklist · times are NTS's, some estimated": "Trackliste · Zeiten von NTS, teils geschätzt",
+  "Play or pause the highlighted episode": "Markierte Folge abspielen oder pausieren",
+  "yt-dlp couldn't find a stream for this episode.": "yt-dlp hat für diese Folge keinen Stream gefunden."
 }

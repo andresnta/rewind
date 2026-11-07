@@ -80,12 +80,20 @@
   "Play": "Afspil",
   "Pause": "Pause",
   "Playing": "Afspiller",
-  "Can't play this file: %1": "Kan ikke afspille filen: %1",
   "−30s": "−30 s",
   "+30s": "+30 s",
   "Back 30 seconds (←)": "30 sekunder tilbage (←)",
   "Forward 30 seconds (→)": "30 sekunder frem (→)",
   "Stop and close the player": "Stop og luk afspilleren",
-  "Play or pause the highlighted saved episode": "Afspil eller sæt det markerede gemte afsnit på pause",
-  "Skip back or forward 30 seconds": "Spring 30 sekunder tilbage eller frem"
+  "Skip back or forward 30 seconds": "Spring 30 sekunder tilbage eller frem",
+  "Can't play this episode: %1": "Kan ikke afspille afsnittet: %1",
+  "Finding the stream…": "Finder streamen…",
+  "Streaming": "Stream",
+  "Tracks": "Numre",
+  "Show the tracklist (T)": "Vis tracklisten (T)",
+  "Show the tracklist": "Vis tracklisten",
+  "Tracklist": "Trackliste",
+  "Tracklist · times are NTS's, some estimated": "Trackliste · tider fra NTS, nogle anslåede",
+  "Play or pause the highlighted episode": "Afspil eller sæt det markerede afsnit på pause",
+  "yt-dlp couldn't find a stream for this episode.": "yt-dlp fandt ingen stream til dette afsnit."
 }

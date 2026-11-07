@@ -81,7 +81,7 @@ private:
     QProcess m_process;
     QByteArray m_stdout, m_stderr;
     QString m_stem, m_audio, m_coverFile;
-    QStringList m_tracks;
+    QList<Nts::Track> m_tracks;
     double m_duration = 0;
     int m_pendingExtras = 0;
 };

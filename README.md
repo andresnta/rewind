@@ -1,6 +1,6 @@
 # Rewind
 
-![Rewind playing a saved Floating Points episode](docs/screenshot.png)
+![Rewind streaming a Floating Points episode and showing its current track](docs/screenshot.png)
 
 Rewind saves past NTS Radio episodes for offline listening, and plays them.
 Paste an nts.live show link to browse its archive, or an episode link to
@@ -14,9 +14,13 @@ one.
 ~/Music/NTS/Floating Points/2025-12-15 - David Wrench.txt
 ```
 
-Saved episodes play in the window's player bar, which remembers where each
-one stopped and picks up there next time. MP3s saved by earlier versions
-still count as saved and play too.
+Any episode plays in the window's player bar: from disk when it's saved,
+streamed straight from NTS's host when it isn't. The bar shows the track
+playing now, from NTS's tracklist (exact times for most tracks, NTS's own
+estimates for the rest), and `T` opens the whole tracklist, where a click
+jumps to that track. The player remembers where each episode stopped,
+streamed or saved, and picks up there next time. MP3s saved by earlier
+versions still count as saved and play too.
 
 Downloads run one at a time. Episodes already saved are never overwritten,
 and an unfinished download never carries the real file name.
@@ -34,8 +38,9 @@ for personal offline listening, not redistribution.
 | `Enter` | Open the link |
 | `J` / `K` | Move through episodes |
 | `Space` | Download the highlighted episode |
-| `P` | Play or pause the highlighted saved episode |
+| `P` | Play or pause the highlighted episode |
 | `←` / `→` | Skip back or forward 30 seconds |
+| `T` | Show the tracklist |
 | `A` | Download every listed episode that isn't saved yet |
 | `M` | Load more episodes |
 | `X` | Cancel the running download |

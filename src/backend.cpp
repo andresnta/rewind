@@ -3,6 +3,9 @@
 #include <QCryptographicHash>
 #include <QDesktopServices>
 #include <QDir>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QTimer>
 #include <QFileInfo>
 #include <QSettings>
 #include <QStandardPaths>
@@ -35,6 +38,111 @@ QString Backend::savedPath(const QVariantMap &episode) const
 QUrl Backend::fileUrl(const QString &path) const
 {
     return QUrl::fromLocalFile(path);
+}
+
+QString Backend::episodeKey(const QVariantMap &episode) const
+{
+    return episode.value("show").toString() + "/" + episode.value("alias").toString();
+}
+
+void Backend::resolveStream(const QVariantMap &map)
+{
+    const Nts::Episode episode = Nts::Episode::fromMap(map);
+    const QString key = episodeKey(map);
+    if (m_resolver) {
+        m_resolver->disconnect(this);
+        m_resolver->kill();
+        m_resolver->deleteLater();
+    }
+    if (m_tools.ytdlp.isEmpty()) {
+        emit streamFailed(key, tr("%1 isn't installed.").arg("yt-dlp"));
+        return;
+    }
+    if (!episode.hasAudio) {
+        emit streamFailed(key, tr("NTS has no audio for this episode."));
+        return;
+    }
+
+    auto *process = new QProcess(this);
+    m_resolver = process;
+    // The same format a download picks, so streaming sounds the same.
+    const QStringList args{"--ignore-config", "--no-playlist", "--no-warnings",
+                           "-f", "bestaudio[ext=m4a]/bestaudio/best", "-g", episode.pageUrl()};
+    auto *timeout = new QTimer(process);
+    timeout->setSingleShot(true);
+    connect(timeout, &QTimer::timeout, process, &QProcess::kill);
+    connect(process, &QProcess::finished, this, [this, process, key](int code, QProcess::ExitStatus status) {
+        process->deleteLater();
+        if (m_resolver == process)
+            m_resolver = nullptr;
+        const QString out = QString::fromUtf8(process->readAllStandardOutput()).trimmed();
+        const QUrl url(out.section('\n', 0, 0).trimmed());
+        if (status == QProcess::NormalExit && code == 0 && url.isValid() && !url.scheme().isEmpty()) {
+            emit streamReady(key, url);
+            return;
+        }
+        QString reason;
+        for (const auto &line : QString::fromUtf8(process->readAllStandardError()).split('\n'))
+            if (line.startsWith("ERROR:"))
+                reason = line.mid(6).trimmed();
+        emit streamFailed(key, reason.isEmpty() ? tr("yt-dlp couldn't find a stream for this episode.")
+                                                : tr("yt-dlp: %1").arg(reason));
+    });
+    connect(process, &QProcess::errorOccurred, this, [this, process, key](QProcess::ProcessError error) {
+        if (error != QProcess::FailedToStart)
+            return;
+        process->deleteLater();
+        if (m_resolver == process)
+            m_resolver = nullptr;
+        emit streamFailed(key, tr("Couldn't start yt-dlp."));
+    });
+    process->start(m_tools.ytdlp, args);
+    timeout->start(60000);
+}
+
+void Backend::setTracks(const QList<Nts::Track> &tracks)
+{
+    m_tracks.clear();
+    m_tracksTimed = false;
+    for (const auto &track : tracks) {
+        m_tracks << track.toMap();
+        m_tracksTimed |= track.start >= 0;
+    }
+    emit tracksChanged();
+}
+
+void Backend::clearTracks()
+{
+    ++m_tracksGeneration;
+    setTracks({});
+}
+
+void Backend::loadTracks(const QVariantMap &map, const QString &path)
+{
+    const int generation = ++m_tracksGeneration;
+    setTracks({});
+    const Nts::Episode episode = Nts::Episode::fromMap(map);
+    if (episode.show.isEmpty() || episode.alias.isEmpty())
+        return;
+
+    // The text file beside a saved episode, for when NTS is out of reach.
+    const QString sidecar = path.isEmpty() ? QString() : QFileInfo(path).path() + "/" + QFileInfo(path).completeBaseName() + ".txt";
+    QNetworkRequest request(Nts::tracklistUrl(episode.show, episode.alias));
+    request.setHeader(QNetworkRequest::UserAgentHeader, "rewind/0.1");
+    request.setTransferTimeout(15000);
+    QNetworkReply *reply = m_network.get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, generation, sidecar] {
+        reply->deleteLater();
+        if (generation != m_tracksGeneration)
+            return;
+        if (reply->error() == QNetworkReply::NoError) {
+            setTracks(Nts::tracksFromJson(reply->readAll()));
+            return;
+        }
+        QFile file(sidecar);
+        if (!sidecar.isEmpty() && file.open(QIODevice::ReadOnly))
+            setTracks(Nts::tracksFromText(QString::fromUtf8(file.readAll())));
+    });
 }
 
 // Paths are hashed into keys: QSettings reads slashes as groups.

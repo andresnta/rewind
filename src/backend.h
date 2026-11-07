@@ -2,6 +2,8 @@
 
 #include <QNetworkAccessManager>
 #include <QObject>
+#include <QPointer>
+#include <QProcess>
 #include <QSettings>
 #include <QUrl>
 
@@ -20,6 +22,8 @@ class Backend : public QObject {
     Q_PROPERTY(QString displayDirectory READ displayDirectory NOTIFY directoryChanged)
     Q_PROPERTY(QStringList missingTools READ missingTools NOTIFY toolsChanged)
     Q_PROPERTY(QString message READ message NOTIFY messageChanged)
+    Q_PROPERTY(QVariantList tracks READ tracks NOTIFY tracksChanged)
+    Q_PROPERTY(bool tracksTimed READ tracksTimed NOTIFY tracksChanged)
 
 public:
     // An empty directory means the saved setting, or ~/Music/NTS.
@@ -45,15 +49,31 @@ public:
     // The episode's audio on disk, in whatever format it was saved, or "".
     Q_INVOKABLE QString savedPath(const QVariantMap &episode) const;
     Q_INVOKABLE QUrl fileUrl(const QString &path) const;
-    // Where playback of a file stopped, so a two-hour show picks up there.
-    Q_INVOKABLE qint64 resumePosition(const QString &path) const;
-    Q_INVOKABLE void savePosition(const QString &path, qint64 milliseconds);
-    Q_INVOKABLE void forgetPosition(const QString &path);
+    // Asks yt-dlp where an episode that isn't saved can be streamed from;
+    // answers with streamReady or streamFailed, tagged with the episode key.
+    // A newer request replaces an older one still running.
+    Q_INVOKABLE void resolveStream(const QVariantMap &episode);
+    // "<show>/<episode>": playback positions and tracks follow the episode,
+    // whether it's streamed or played from disk.
+    Q_INVOKABLE QString episodeKey(const QVariantMap &episode) const;
+    // Where playback of an episode stopped, so a two-hour show picks up there.
+    Q_INVOKABLE qint64 resumePosition(const QString &key) const;
+    Q_INVOKABLE void savePosition(const QString &key, qint64 milliseconds);
+    Q_INVOKABLE void forgetPosition(const QString &key);
+    // Loads the playing episode's tracklist from NTS, or from the text file
+    // beside a saved episode when NTS can't be reached.
+    Q_INVOKABLE void loadTracks(const QVariantMap &episode, const QString &path);
+    Q_INVOKABLE void clearTracks();
+    QVariantList tracks() const { return m_tracks; }
+    bool tracksTimed() const { return m_tracksTimed; }
 
 signals:
     void directoryChanged();
     void toolsChanged();
     void messageChanged();
+    void tracksChanged();
+    void streamReady(const QString &key, const QUrl &url);
+    void streamFailed(const QString &key, const QString &error);
 
 private:
     void setMessage(const QString &message);
@@ -69,4 +89,9 @@ private:
     // Positions live apart from the folder setting, and a test run can
     // point them at a temporary file.
     std::unique_ptr<QSettings> m_positions;
+    QPointer<QProcess> m_resolver;
+    QVariantList m_tracks;
+    bool m_tracksTimed = false;
+    int m_tracksGeneration = 0;
+    void setTracks(const QList<Nts::Track> &tracks);
 };

@@ -37,6 +37,17 @@ struct Episode {
     static Episode fromMap(const QVariantMap &map);
 };
 
+// One track in an episode's tracklist. NTS gives exact start times for
+// most tracks and estimates for the rest; -1 means it gives neither.
+struct Track {
+    QString artist;
+    QString title;
+    int start = -1;     // seconds into the episode
+    int length = -1;    // seconds
+    QString label() const;
+    QVariantMap toMap() const;
+};
+
 struct Show {
     QString alias;
     QString name;
@@ -62,8 +73,8 @@ QUrl tracklistUrl(const QString &show, const QString &episode);
 Episode episodeFromJson(const QJsonObject &object);
 Show showFromJson(const QByteArray &json);
 QList<Episode> episodesFromJson(const QByteArray &json, int *total = nullptr);
-// "Artist – Title" per track, in broadcast order.
-QStringList tracksFromJson(const QByteArray &json);
+// Tracks in broadcast order.
+QList<Track> tracksFromJson(const QByteArray &json);
 
 // A name every filesystem accepts: no separators or control characters, no
 // leading dot, and short enough to leave room for the directory.
@@ -76,7 +87,12 @@ QString targetStem(const QString &directory, const Episode &episode);
 QStringList audioExtensions();
 // The episode's audio file if it's on disk in any of those formats, or "".
 QString savedFile(const QString &directory, const Episode &episode);
-// The text file saved beside the audio when NTS lists the tracks.
-QString tracklistText(const Episode &episode, const QStringList &tracks);
+// The text file saved beside the audio when NTS lists the tracks, with
+// start times where known, and the reverse, so a saved episode shows its
+// current track offline too.
+QString tracklistText(const Episode &episode, const QList<Track> &tracks);
+QList<Track> tracksFromText(const QString &text);
+// "1:02:03" or "2:03".
+QString clock(int seconds);
 
 }

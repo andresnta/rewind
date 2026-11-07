@@ -28,7 +28,7 @@ Rectangle {
     }
 
     HoverHandler { id: hover }
-    TapHandler { onTapped: row.picked(); onDoubleTapped: model.status === "done" ? row.play() : model.hasAudio && model.status === "" ? row.download() : undefined }
+    TapHandler { onTapped: row.picked(); onDoubleTapped: if (model.hasAudio) row.play() }
 
     RowLayout {
         anchors.fill: parent
@@ -83,7 +83,7 @@ Rectangle {
                 : model.status === "failed" ? qsTr("Failed") : ""
         }
         Button {
-            visible: model.status === "done"
+            visible: model.hasAudio
             flat: true
             text: row.playing ? qsTr("Pause") : qsTr("Play")
             font.pixelSize: 13

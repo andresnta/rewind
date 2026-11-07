@@ -150,16 +150,66 @@ QList<Episode> episodesFromJson(const QByteArray &json, int *total)
     return episodes;
 }
 
-QStringList tracksFromJson(const QByteArray &json)
+QString Track::label() const
 {
-    QStringList tracks;
+    return artist.isEmpty() ? title : title.isEmpty() ? artist : artist + " – " + title;
+}
+
+QVariantMap Track::toMap() const
+{
+    return {{"artist", artist}, {"title", title}, {"start", start}, {"length", length}};
+}
+
+QList<Track> tracksFromJson(const QByteArray &json)
+{
+    // An exact time where NTS has one, its estimate where it doesn't.
+    auto seconds = [](const QJsonObject &track, const char *exact, const char *estimate) {
+        const QJsonValue value = track.value(QLatin1String(exact));
+        if (value.isDouble())
+            return value.toInt();
+        const QJsonValue guess = track.value(QLatin1String(estimate));
+        return guess.isDouble() ? guess.toInt() : -1;
+    };
+    QList<Track> tracks;
     const QJsonArray results = QJsonDocument::fromJson(json).object().value("results").toArray();
     for (const auto &value : results) {
-        const QJsonObject track = value.toObject();
-        const QString artist = text(track, "artist"), title = text(track, "title");
-        if (artist.isEmpty() && title.isEmpty())
+        const QJsonObject object = value.toObject();
+        Track track;
+        track.artist = text(object, "artist");
+        track.title = text(object, "title");
+        if (track.artist.isEmpty() && track.title.isEmpty())
             continue;
-        tracks << (artist.isEmpty() ? title : title.isEmpty() ? artist : artist + " – " + title);
+        track.start = seconds(object, "offset", "offset_estimate");
+        track.length = seconds(object, "duration", "duration_estimate");
+        tracks << track;
+    }
+    return tracks;
+}
+
+QString clock(int seconds)
+{
+    const int h = seconds / 3600, m = seconds % 3600 / 60, s = seconds % 60;
+    return h > 0 ? QString("%1:%2:%3").arg(h).arg(m, 2, 10, QChar('0')).arg(s, 2, 10, QChar('0'))
+                 : QString("%1:%2").arg(m).arg(s, 2, 10, QChar('0'));
+}
+
+QList<Track> tracksFromText(const QString &content)
+{
+    // "07. 1:02:03  Artist – Title", or without the time as older files have it.
+    static const QRegularExpression line(R"(^\d+\.\s+(?:(?:(\d+):)?(\d+):(\d\d)\s\s)?(.+)$)");
+    QList<Track> tracks;
+    for (const auto &row : content.split('\n')) {
+        const auto match = line.match(row.trimmed());
+        if (!match.hasMatch())
+            continue;
+        Track track;
+        if (!match.captured(3).isEmpty())
+            track.start = match.captured(1).toInt() * 3600 + match.captured(2).toInt() * 60 + match.captured(3).toInt();
+        const QString label = match.captured(4).trimmed();
+        const int dash = label.indexOf(" – ");
+        track.artist = dash < 0 ? QString() : label.left(dash);
+        track.title = dash < 0 ? label : label.mid(dash + 3);
+        tracks << track;
     }
     return tracks;
 }
@@ -202,7 +252,7 @@ QString savedFile(const QString &directory, const Episode &episode)
     return {};
 }
 
-QString tracklistText(const Episode &episode, const QStringList &tracks)
+QString tracklistText(const Episode &episode, const QList<Track> &tracks)
 {
     QString out = episode.name + "\n";
     if (!episode.showName.isEmpty() && episode.showName != episode.name)
@@ -210,7 +260,10 @@ QString tracklistText(const Episode &episode, const QStringList &tracks)
     out += episode.date + "\n" + episode.pageUrl() + "\n\n";
     const int width = QString::number(tracks.size()).size() < 2 ? 2 : QString::number(tracks.size()).size();
     for (int i = 0; i < tracks.size(); ++i)
-        out += QString("%1. %2\n").arg(i + 1, width, 10, QChar('0')).arg(tracks.at(i));
+        out += QString("%1. %2%3\n")
+                   .arg(i + 1, width, 10, QChar('0'))
+                   .arg(tracks.at(i).start >= 0 ? clock(tracks.at(i).start) + "  " : QString())
+                   .arg(tracks.at(i).label());
     return out;
 }
 

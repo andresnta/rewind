@@ -65,17 +65,39 @@ private slots:
 
     void readsTracklists()
     {
+        // Exact times win over estimates, and a track with neither has none.
         const auto tracks = Nts::tracksFromJson(R"({"results":[
-            {"artist":"Artist One","title":"First"},
-            {"artist":"","title":"Untitled"},
+            {"artist":"Artist One","title":"First","offset":null,"offset_estimate":8,"duration":null,"duration_estimate":772},
+            {"artist":"","title":"Untitled","offset":3725,"offset_estimate":3600,"duration":120},
+            {"artist":"Artist Three","title":"Third"},
             {"artist":"","title":""}]})");
-        QCOMPARE(tracks, QStringList({"Artist One – First", "Untitled"}));
+        QCOMPARE(tracks.size(), 3);
+        QCOMPARE(tracks.at(0).label(), QString("Artist One – First"));
+        QCOMPARE(tracks.at(0).start, 8);
+        QCOMPARE(tracks.at(0).length, 772);
+        QCOMPARE(tracks.at(1).label(), QString("Untitled"));
+        QCOMPARE(tracks.at(1).start, 3725);
+        QCOMPARE(tracks.at(2).start, -1);
 
         Nts::Episode e;
         e.show = "s"; e.alias = "a"; e.name = "Ep"; e.showName = "Show"; e.date = "2026-01-02";
         const QString text = Nts::tracklistText(e, tracks);
         QVERIFY(text.startsWith("Ep\nShow\n2026-01-02\nhttps://www.nts.live/shows/s/episodes/a\n\n"));
-        QVERIFY(text.contains("01. Artist One – First\n02. Untitled\n"));
+        QVERIFY(text.contains("01. 0:08  Artist One – First\n02. 1:02:05  Untitled\n03. Artist Three – Third\n"));
+
+        // The saved file reads back with its times, and so do older ones without.
+        const auto back = Nts::tracksFromText(text);
+        QCOMPARE(back.size(), 3);
+        QCOMPARE(back.at(0).artist, QString("Artist One"));
+        QCOMPARE(back.at(0).title, QString("First"));
+        QCOMPARE(back.at(0).start, 8);
+        QCOMPARE(back.at(1).title, QString("Untitled"));
+        QCOMPARE(back.at(1).start, 3725);
+        QCOMPARE(back.at(2).start, -1);
+        const auto old = Nts::tracksFromText("Ep\n\n01. Artist – Song\n02. Other\n");
+        QCOMPARE(old.size(), 2);
+        QCOMPARE(old.at(0).artist, QString("Artist"));
+        QCOMPARE(old.at(0).start, -1);
     }
 
     void namesFilesSafely()
@@ -223,15 +245,18 @@ private slots:
         QTemporaryDir dir;
         {
             Backend backend(dir.path(), Tools{"/bin/true", "/bin/true"});
-            backend.savePosition("/music/a.m4a", 3600000);
-            backend.savePosition("/music/b.m4a", 2000); // too early to bother
-            QCOMPARE(backend.resumePosition("/music/a.m4a"), 3600000);
-            QCOMPARE(backend.resumePosition("/music/b.m4a"), 0);
+            // Keyed by episode, so streaming and the saved file share a place.
+            const QString key = backend.episodeKey({{"show", "fp"}, {"alias", "ep-1"}});
+            QCOMPARE(key, QString("fp/ep-1"));
+            backend.savePosition(key, 3600000);
+            backend.savePosition("fp/ep-2", 2000); // too early to bother
+            QCOMPARE(backend.resumePosition(key), 3600000);
+            QCOMPARE(backend.resumePosition("fp/ep-2"), 0);
         }
         Backend again(dir.path(), Tools{"/bin/true", "/bin/true"});
-        QCOMPARE(again.resumePosition("/music/a.m4a"), 3600000);
-        again.forgetPosition("/music/a.m4a");
-        QCOMPARE(again.resumePosition("/music/a.m4a"), 0);
+        QCOMPARE(again.resumePosition("fp/ep-1"), 3600000);
+        again.forgetPosition("fp/ep-1");
+        QCOMPARE(again.resumePosition("fp/ep-1"), 0);
         QCOMPARE(again.fileUrl("/music/a b.m4a"), QUrl("file:///music/a%20b.m4a"));
     }
 
@@ -265,6 +290,47 @@ private slots:
         QCOMPARE(backend.directory(), dir.path());
         backend.setDirectory("~/Music/Elsewhere");
         QCOMPARE(backend.directory(), QDir::homePath() + "/Music/Elsewhere");
+    }
+
+    void resolvesStreams()
+    {
+        Fixture f;
+        f.script("yt-dlp", "#!/bin/sh\necho 'https://cdn.example.com/a/playlist.m3u8'\n");
+        Backend backend(f.dir.filePath("out"), f.tools());
+        QSignalSpy ready(&backend, &Backend::streamReady);
+        backend.resolveStream(f.episode().toMap());
+        QVERIFY(ready.wait(5000));
+        QCOMPARE(ready.first().at(0).toString(), QString("floating-points/floating-points-21st-september-2026"));
+        QCOMPARE(ready.first().at(1).toUrl(), QUrl("https://cdn.example.com/a/playlist.m3u8"));
+
+        f.script("yt-dlp", "#!/bin/sh\necho 'ERROR: [soundcloud] Gone' >&2\nexit 1\n");
+        QSignalSpy failed(&backend, &Backend::streamFailed);
+        backend.resolveStream(f.episode().toMap());
+        QVERIFY(failed.wait(5000));
+        QVERIFY(failed.first().at(1).toString().contains("Gone"));
+    }
+
+    void loadsTracksOnlineAndOffline()
+    {
+        Fixture f;
+        f.routes["/api/v2/shows/floating-points/episodes/floating-points-21st-september-2026/tracklist"] =
+            R"({"results":[{"artist":"Artist One","title":"First","offset":0},{"artist":"Two","title":"Second","offset":600}]})";
+        Backend backend(f.dir.filePath("out"), f.tools());
+        QSignalSpy changed(&backend, &Backend::tracksChanged);
+        backend.loadTracks(f.episode().toMap(), {});
+        QTRY_COMPARE_WITH_TIMEOUT(backend.tracks().size(), 2, 5000);
+        QVERIFY(backend.tracksTimed());
+        QCOMPARE(backend.tracks().at(1).toMap().value("start").toInt(), 600);
+
+        // With NTS out of reach, the text file beside a saved episode stands in.
+        f.server.close();
+        Nts::setApiBase("http://127.0.0.1:1/api/v2");
+        QDir().mkpath(f.dir.filePath("saved"));
+        write(f.dir.filePath("saved/ep.txt"), "Ep\n\n01. 0:00  Offline – One\n02. 12:00  Offline – Two\n03. Offline – Three\n");
+        backend.loadTracks(f.episode().toMap(), f.dir.filePath("saved/ep.m4a"));
+        QTRY_COMPARE_WITH_TIMEOUT(backend.tracks().size(), 3, 10000);
+        QCOMPARE(backend.tracks().at(1).toMap().value("start").toInt(), 720);
+        QCOMPARE(backend.tracks().at(2).toMap().value("title").toString(), QString("Three"));
     }
 
     void themeFallsBack()

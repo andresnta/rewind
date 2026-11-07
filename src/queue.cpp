@@ -31,6 +31,8 @@ QVariant Queue::data(const QModelIndex &index, int role) const
     case SkippedRole: return d->skipped();
     case AliasRole: return e.alias;
     case ThumbnailRole: return e.thumbnail;
+    case EpisodeRole: return e.toMap();
+    case KeyRole: return e.show + "/" + e.alias;
     }
     return {};
 }
@@ -39,7 +41,8 @@ QHash<int, QByteArray> Queue::roleNames() const
 {
     return {{TitleRole, "title"}, {ShowNameRole, "showName"}, {DateRole, "date"}, {StateRole, "state"},
             {ProgressRole, "progress"}, {ErrorRole, "error"}, {PathRole, "path"}, {SkippedRole, "skipped"},
-            {AliasRole, "alias"}, {ThumbnailRole, "thumbnail"}};
+            {AliasRole, "alias"}, {ThumbnailRole, "thumbnail"},
+            {EpisodeRole, "episode"}, {KeyRole, "key"}};
 }
 
 int Queue::activeCount() const
