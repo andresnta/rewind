@@ -60,11 +60,13 @@ Link parseLink(const QString &input)
     const QString trimmed = input.trimmed();
     static const QRegularExpression link(
         R"((?:^|[/.])nts\.live/shows/([A-Za-z0-9_-]+)(?:/episodes/([A-Za-z0-9_-]+))?)");
-    // The last link wins: pasting a full link after the prefilled
-    // "nts.live/shows/" leaves the prefix in front of the real one.
-    QRegularExpressionMatch match;
-    for (auto it = link.globalMatch(trimmed); it.hasNext();)
-        match = it.next();
+    // The last link wins: typing or pasting a full link after the
+    // prefilled "nts.live/shows/" leaves the prefix in front of the real
+    // one, and the two can run together ("…/shows/nts.live/shows/x"), so
+    // matching starts at the last "nts.live/shows/" rather than the first.
+    const int last = trimmed.lastIndexOf("nts.live/shows/", -1, Qt::CaseInsensitive);
+    const QRegularExpressionMatch match = last < 0 ? QRegularExpressionMatch()
+                                                   : link.match(trimmed, qMax(0, last - 1));
     if (match.hasMatch())
         return {match.captured(1).toLower(), match.captured(2).toLower()};
 

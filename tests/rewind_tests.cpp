@@ -43,6 +43,10 @@ private slots:
         QCOMPARE(link.episode, QString("fp-1"));
         QCOMPARE(Nts::linkText(link), QString("nts.live/shows/floating-points/episodes/fp-1"));
         QCOMPARE(Nts::linkText(Nts::parseLink("nts.live/shows/floating-points")), QString("nts.live/shows/floating-points"));
+        // Typed after the prefix without "https://", the two links run together.
+        QCOMPARE(Nts::parseLink("nts.live/shows/nts.live/shows/courtesy").show, QString("courtesy"));
+        QCOMPARE(Nts::parseLink("nts.live/shows/www.nts.live/shows/courtesy").show, QString("courtesy"));
+        QCOMPARE(Nts::parseLink("nts.live/shows/courtesy").show, QString("courtesy"));
     }
 
     void readsEpisodes()
