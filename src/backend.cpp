@@ -25,6 +25,15 @@ Backend::Backend(const QString &directory, const Tools &tools, QObject *parent)
     m_queue.setDirectory(m_directory);
 
     connect(&m_queue, &Queue::statusesChanged, &m_archive, &Archive::refreshStatuses);
+    m_archive.setProgressProvider([this](const Nts::Episode &e) { return m_queue.progressFor(e.show, e.alias); });
+    connect(&m_queue, &Queue::progressed, &m_archive, &Archive::refreshEpisode);
+    // With no downloads list, a failed download says so in the banner.
+    connect(&m_queue, &Queue::downloadFinished, this, [this](Download *d) {
+        if (d->state() == Download::Failed) {
+            const QString name = d->episode().name.isEmpty() ? d->episode().alias : d->episode().name;
+            setMessage(tr("Couldn't download %1: %2").arg(name, d->error()));
+        }
+    });
     connect(&m_archive, &Archive::loadingChanged, this, [this] {
         if (!m_archive.loading() && !m_archive.error().isEmpty() && m_archive.rowCount() == 0)
             setMessage(m_archive.error());

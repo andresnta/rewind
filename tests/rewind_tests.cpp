@@ -280,11 +280,28 @@ private slots:
         QVERIFY(queue.add(b));
         QCOMPARE(queue.count(), 2);
         QCOMPARE(queue.statusFor(b.show, b.alias), QString("waiting"));
+        QCOMPARE(queue.progressFor(b.show, b.alias), -1.0); // waiting, not running
         QTRY_COMPARE_WITH_TIMEOUT(queue.activeCount(), 0, 15000);
         QCOMPARE(queue.statusFor(a.show, a.alias), QString("done"));
         QCOMPARE(queue.statusFor(b.show, b.alias), QString("done"));
         queue.clearFinished();
         QCOMPARE(queue.count(), 0);
+    }
+
+    void cancelsAnEpisodeFromItsRow()
+    {
+        Fixture f;
+        f.script("yt-dlp", "#!/bin/sh\necho '@@ 50 100 NA NA'\nsleep 30\n");
+        Queue queue(&f.network, f.tools());
+        queue.setDirectory(f.dir.filePath("out"));
+        const Nts::Episode e = f.episode();
+        queue.add(e);
+        QTRY_VERIFY_WITH_TIMEOUT(queue.progressFor(e.show, e.alias) > 0.4, 5000);
+        QVERIFY(queue.progressFor(e.show, e.alias) < 0.96);
+        QCOMPARE(queue.currentTitle(), e.name);
+        queue.cancelEpisode(e.show, e.alias);
+        QCOMPARE(queue.activeCount(), 0);
+        QCOMPARE(queue.statusFor(e.show, e.alias), QString());
     }
 
     void backendRejectsOtherLinks()

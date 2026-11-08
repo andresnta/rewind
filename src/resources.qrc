@@ -2,7 +2,6 @@
     <qresource prefix="/">
         <file alias="Main.qml">Main.qml</file>
         <file alias="EpisodeRow.qml">EpisodeRow.qml</file>
-        <file alias="QueueRow.qml">QueueRow.qml</file>
         <file alias="HelpOverlay.qml">HelpOverlay.qml</file>
         <file alias="AccentButton.qml">AccentButton.qml</file>
         <file alias="PlayerBar.qml">PlayerBar.qml</file>

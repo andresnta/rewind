@@ -22,12 +22,15 @@ class Archive : public QAbstractListModel {
 
 public:
     enum Role { NameRole = Qt::UserRole + 1, DateRole, GenresRole, ThumbnailRole, HasAudioRole, StatusRole,
-                AliasRole, EpisodeRole };
+                AliasRole, EpisodeRole, ProgressRole };
 
     // The status of an episode as the queue and the disk see it.
     using StatusProvider = std::function<QString(const Nts::Episode &)>;
+    // How far its download is, 0..1, or -1 when none is running.
+    using ProgressProvider = std::function<double(const Nts::Episode &)>;
 
     Archive(QNetworkAccessManager *network, StatusProvider status, QObject *parent = nullptr);
+    void setProgressProvider(ProgressProvider progress) { m_progress = std::move(progress); }
 
     int rowCount(const QModelIndex &parent = {}) const override;
     QVariant data(const QModelIndex &index, int role) const override;
@@ -50,6 +53,7 @@ public:
     Q_INVOKABLE QVariantList pending() const;
     Q_INVOKABLE int indexOf(const QString &alias) const;
     void refreshStatuses();
+    void refreshEpisode(const QString &show, const QString &alias);
 
     static constexpr int PageSize = 24;
 
@@ -64,6 +68,7 @@ private:
 
     QNetworkAccessManager *m_network;
     StatusProvider m_status;
+    ProgressProvider m_progress;
     Nts::Show m_show;
     QList<Nts::Episode> m_episodes;
     int m_total = 0;

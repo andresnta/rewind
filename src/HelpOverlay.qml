@@ -27,7 +27,6 @@ Popup {
         ["M", qsTr("Load more episodes")],
         ["X", qsTr("Cancel the running download")],
         ["R", qsTr("Retry failed downloads")],
-        ["C", qsTr("Clear finished downloads")],
         ["O", qsTr("Open the download folder")],
         [",", qsTr("Change the download folder")],
         ["Esc", qsTr("Leave the link field")],

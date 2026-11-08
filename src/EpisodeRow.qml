@@ -12,6 +12,7 @@ Rectangle {
     signal picked()
     signal download()
     signal play()
+    signal cancel()
 
     implicitHeight: 64
     color: current ? Qt.rgba(1, 1, 1, 0.06) : hover.hovered ? Qt.rgba(1, 1, 1, 0.03) : "transparent"
@@ -88,15 +89,23 @@ Rectangle {
                 text: model.status === "failed" ? qsTr("Retry") : qsTr("Download")
                 onClicked: { row.picked(); row.download() }
             }
+            // A download in progress is its own progress bar; clicking it
+            // cancels, as hovering says.
+            RowButton {
+                anchors.fill: parent
+                visible: model.status === "waiting" || model.status === "downloading"
+                fill: model.status === "downloading" ? Math.max(0, model.progress) : -1
+                text: hovered ? qsTr("Cancel")
+                    : model.status === "waiting" ? qsTr("Queued")
+                    : qsTr("%1%").arg(Math.floor(Math.max(0, model.progress) * 100).toLocaleString(Qt.locale(), 'f', 0))
+                onClicked: row.cancel()
+            }
             Label {
                 anchors.centerIn: parent
-                visible: !model.hasAudio || (model.status !== "" && model.status !== "failed")
+                visible: !model.hasAudio || model.status === "done"
                 font.pixelSize: 12
                 color: model.status === "done" ? theme.accent : "#8a8a93"
-                text: !model.hasAudio ? qsTr("No audio")
-                    : model.status === "done" ? qsTr("Saved")
-                    : model.status === "downloading" ? qsTr("Downloading")
-                    : model.status === "waiting" ? qsTr("Queued") : ""
+                text: !model.hasAudio ? qsTr("No audio") : qsTr("Saved")
             }
         }
     }

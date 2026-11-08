@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
     app.setApplicationName("rewind");
     app.setOrganizationName("rewind");
-    app.setApplicationVersion("0.3.2");
+    app.setApplicationVersion("0.4.0");
     if (command)
         return Cli::run(arguments);
 

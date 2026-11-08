@@ -26,6 +26,7 @@ QVariant Archive::data(const QModelIndex &index, int role) const
     case StatusRole: return m_status ? m_status(e) : QString();
     case AliasRole: return e.alias;
     case EpisodeRole: return e.toMap();
+    case ProgressRole: return m_progress ? m_progress(e) : -1.0;
     }
     return {};
 }
@@ -33,7 +34,8 @@ QVariant Archive::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> Archive::roleNames() const
 {
     return {{NameRole, "name"}, {DateRole, "date"}, {GenresRole, "genres"}, {ThumbnailRole, "thumbnail"},
-            {HasAudioRole, "hasAudio"}, {StatusRole, "status"}, {AliasRole, "alias"}, {EpisodeRole, "episode"}};
+            {HasAudioRole, "hasAudio"}, {StatusRole, "status"}, {AliasRole, "alias"}, {EpisodeRole, "episode"},
+            {ProgressRole, "progress"}};
 }
 
 QVariantMap Archive::episode(int row) const
@@ -61,7 +63,14 @@ int Archive::indexOf(const QString &alias) const
 void Archive::refreshStatuses()
 {
     if (!m_episodes.isEmpty())
-        emit dataChanged(index(0), index(m_episodes.size() - 1), {StatusRole});
+        emit dataChanged(index(0), index(m_episodes.size() - 1), {StatusRole, ProgressRole});
+}
+
+void Archive::refreshEpisode(const QString &show, const QString &alias)
+{
+    for (int i = 0; i < m_episodes.size(); ++i)
+        if (m_episodes.at(i).alias == alias && m_episodes.at(i).show == show)
+            emit dataChanged(index(i), index(i), {ProgressRole, StatusRole});
 }
 
 void Archive::setError(const QString &message)

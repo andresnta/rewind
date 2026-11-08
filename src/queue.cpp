@@ -78,12 +78,43 @@ QString Queue::statusFor(const QString &show, const QString &alias) const
     return {};
 }
 
+// Downloading is nearly all the time; fetching details and saving are quick.
+static double overall(const Download *d)
+{
+    const double p = qMax(0.0, d->progress());
+    switch (d->state()) {
+    case Download::Fetching: return 0.0;
+    case Download::Downloading: return p * 0.95;
+    case Download::Saving: return 0.95 + p * 0.05;
+    default: return -1;
+    }
+}
+
+double Queue::progressFor(const QString &show, const QString &alias) const
+{
+    for (int i = m_items.size() - 1; i >= 0; --i) {
+        const Download *d = m_items.at(i);
+        if (d->episode().alias == alias && d->episode().show == show)
+            return overall(d);
+    }
+    return -1;
+}
+
+double Queue::currentProgress() const
+{
+    for (const auto *d : m_items)
+        if (overall(d) >= 0)
+            return overall(d);
+    return 0;
+}
+
 void Queue::watch(Download *download)
 {
     connect(download, &Download::changed, this, [this, download] {
         const int row = m_items.indexOf(download);
         if (row >= 0)
             emit dataChanged(index(row), index(row));
+        emit progressed(download->episode().show, download->episode().alias);
     });
     connect(download, &Download::finished, this, [this, download] {
         emit countsChanged();
@@ -139,6 +170,21 @@ void Queue::cancelCurrent()
     for (auto *d : m_items)
         if (!d->isFinished() && d->state() != Download::Waiting)
             return d->cancel();
+}
+
+void Queue::cancelEpisode(const QString &show, const QString &alias)
+{
+    for (auto *d : m_items)
+        if (!d->isFinished() && d->episode().alias == alias && d->episode().show == show)
+            d->cancel();
+}
+
+QString Queue::currentTitle() const
+{
+    for (const auto *d : m_items)
+        if (!d->isFinished() && d->state() != Download::Waiting)
+            return d->episode().name.isEmpty() ? d->episode().alias : d->episode().name;
+    return {};
 }
 
 void Queue::cancelAll()

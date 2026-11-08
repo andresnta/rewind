@@ -36,6 +36,10 @@ public:
     Q_INVOKABLE bool enqueue(const QVariantMap &episode);
     Q_INVOKABLE void cancel(int row);
     Q_INVOKABLE void cancelCurrent();
+    // Cancels an episode's download, waiting or running, from its row.
+    Q_INVOKABLE void cancelEpisode(const QString &show, const QString &alias);
+    // The title of the download running now, for the window's header.
+    Q_INVOKABLE QString currentTitle() const;
     Q_INVOKABLE void cancelAll();
     Q_INVOKABLE void retry(int row);
     Q_INVOKABLE void retryFailed();
@@ -45,12 +49,19 @@ public:
     // "waiting", "downloading", "done", "failed", or "" for an episode this
     // session hasn't touched.
     QString statusFor(const QString &show, const QString &alias) const;
+    // How far an episode's download is, 0..1, across fetching and saving;
+    // -1 when it isn't running.
+    double progressFor(const QString &show, const QString &alias) const;
+    // The running download's overall progress, 0..1, for the window's header.
+    Q_INVOKABLE double currentProgress() const;
     const QList<Download *> &items() const { return m_items; }
 
 signals:
     void countsChanged();
     void statusesChanged();
     void downloadFinished(Download *download);
+    // One episode's download moved on; its row in a show's list redraws.
+    void progressed(const QString &show, const QString &alias);
 
 private:
     void startNext();

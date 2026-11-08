@@ -29,7 +29,16 @@ ApplicationWindow {
     readonly property bool typing: linkField.activeFocus || folderField.activeFocus
     readonly property bool overlay: help.visible || settings.visible || quitDialog.visible
     property bool quitting: false
-    readonly property int queueWidth: 340
+    // The running download, refreshed as it moves along.
+    property real downloadProgress: 0
+    property string downloadTitle: ""
+    Connections {
+        target: backend.queue
+        function onProgressed() {
+            win.downloadProgress = backend.queue.currentProgress()
+            win.downloadTitle = backend.queue.currentTitle()
+        }
+    }
     // Where every link starts, so pasting a show's name is all that's left.
     readonly property string linkPrefix: "nts.live/shows/"
     property string pendingAlias: ""
@@ -151,7 +160,6 @@ ApplicationWindow {
     Shortcut { sequence: "O"; context: Qt.ApplicationShortcut; enabled: !win.typing && !win.overlay; onActivated: backend.openFolder() }
     Shortcut { sequence: "X"; context: Qt.ApplicationShortcut; enabled: !win.typing && !win.overlay; onActivated: backend.queue.cancelCurrent() }
     Shortcut { sequence: "R"; context: Qt.ApplicationShortcut; enabled: !win.typing && !win.overlay; onActivated: backend.queue.retryFailed() }
-    Shortcut { sequence: "C"; context: Qt.ApplicationShortcut; enabled: !win.typing && !win.overlay; onActivated: backend.queue.clearFinished() }
     Shortcut { sequence: ","; context: Qt.ApplicationShortcut; enabled: !win.typing && !win.overlay; onActivated: settings.open() }
     Shortcut {
         sequence: "Escape"; context: Qt.ApplicationShortcut
@@ -171,11 +179,10 @@ ApplicationWindow {
             anchors.margins: 16
             spacing: 12
 
-            // The link bar, split like the panels below it: the field spans the
-            // episode list, the buttons sit over the downloads.
+            // The link bar, as wide as the episode list below it.
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 12
+                spacing: 6
 
                 TextField {
                     id: linkField
@@ -185,9 +192,25 @@ ApplicationWindow {
                     onAccepted: win.openLink()
                 }
                 RowLayout {
-                    Layout.preferredWidth: win.queueWidth
-                    Layout.maximumWidth: win.queueWidth
                     spacing: 6
+                    // What's downloading, now there's no list of downloads:
+                    // how many, and how far the current one is.
+                    Label {
+                        visible: backend.queue.activeCount > 0
+                        Layout.leftMargin: 6
+                        Layout.rightMargin: 4
+                        font.pixelSize: 12
+                        color: theme.accent
+                        text: {
+                            backend.queue.count  // re-read as downloads come and go
+                            return qsTr("Downloading %1 · %2%")
+                                .arg(backend.queue.activeCount.toLocaleString(Qt.locale(), 'f', 0))
+                                .arg(Math.floor(win.downloadProgress * 100).toLocaleString(Qt.locale(), 'f', 0))
+                        }
+                        ToolTip.visible: downloadsHover.hovered
+                        ToolTip.text: qsTr("Now: %1 · X cancels it").arg(win.downloadTitle)
+                        HoverHandler { id: downloadsHover }
+                    }
                     AccentButton {
                         text: qsTr("Open")
                         enabled: linkField.text.trim() !== "" && linkField.text.trim() !== win.linkPrefix
@@ -195,7 +218,7 @@ ApplicationWindow {
                     }
                     Button {
                         flat: true
-                        Layout.fillWidth: true
+                        Layout.maximumWidth: 220
                         text: backend.displayDirectory
                         font.pixelSize: 13
                         ToolTip.visible: hovered
@@ -342,6 +365,7 @@ ApplicationWindow {
                                 dateText: win.formatDate(model.date)
                                 onPicked: episodes.currentIndex = index
                                 onDownload: backend.queue.enqueue(model.episode)
+                                onCancel: backend.queue.cancelEpisode(model.episode.show, model.alias)
                                 playing: player.playing && player.key === model.episode.show + "/" + model.alias
                                 onPlay: { episodes.currentIndex = index; win.playRow(index) }
                             }
@@ -405,77 +429,6 @@ ApplicationWindow {
                             font.family: "monospace"
                             font.pixelSize: 12
                             text: "nts.live/shows/…"
-                        }
-                    }
-                }
-
-                // The queue.
-                Rectangle {
-                    Layout.preferredWidth: win.queueWidth
-                    Layout.fillHeight: true
-                    color: win.panel
-                    radius: theme.radius
-                    border.color: win.line
-                    clip: true
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 1
-                        spacing: 0
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Layout.leftMargin: 16
-                            Layout.rightMargin: 8
-                            Layout.preferredHeight: 52
-                            Label {
-                                Layout.fillWidth: true
-                                text: backend.queue.activeCount > 0
-                                      ? qsTr("Downloads · %1").arg(backend.queue.activeCount.toLocaleString(Qt.locale(), 'f', 0))
-                                      : qsTr("Downloads")
-                                font.pixelSize: 15
-                                font.weight: Font.DemiBold
-                            }
-                            Button {
-                                flat: true
-                                text: qsTr("Clear")
-                                visible: backend.queue.finishedCount > 0
-                                Layout.preferredHeight: 40
-                                ToolTip.visible: hovered
-                                ToolTip.text: qsTr("Clear finished downloads (C)")
-                                onClicked: backend.queue.clearFinished()
-                            }
-                        }
-                        Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: win.line }
-
-                        ListView {
-                            id: queueList
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            clip: true
-                            model: backend.queue
-                            spacing: 0
-                            boundsBehavior: Flickable.StopAtBounds
-                            ScrollBar.vertical: ScrollBar {}
-                            delegate: QueueRow {
-                                width: queueList.width
-                                dateText: win.formatDate(model.date)
-                                onCancel: backend.queue.cancel(index)
-                                onRetry: backend.queue.retry(index)
-                                onReveal: backend.queue.reveal(index)
-                                playing: player.playing && player.key === model.key
-                                onPlay: player.play(model.episode)
-                            }
-
-                            Label {
-                                anchors.centerIn: parent
-                                width: parent.width - 48
-                                visible: queueList.count === 0
-                                horizontalAlignment: Text.AlignHCenter
-                                wrapMode: Text.WordWrap
-                                color: win.dim
-                                text: qsTr("Episodes you pick show up here. Space downloads the highlighted one.")
-                            }
                         }
                     }
                 }

@@ -7,6 +7,9 @@ import QtQuick.Controls.Material
 Button {
     id: control
     property bool vivid: false
+    // 0..1 fills the button with the accent from the left, as a progress
+    // bar; -1 leaves it plain.
+    property real fill: -1
 
     implicitWidth: 84
     implicitHeight: 32
@@ -34,8 +37,17 @@ Button {
     }
     background: Rectangle {
         radius: Math.min(4, theme.radius)
+        clip: true
         color: control.vivid
                ? (control.down ? Qt.darker(theme.accent, 1.15) : control.hovered ? Qt.lighter(theme.accent, 1.08) : theme.accent)
                : Qt.rgba(1, 1, 1, control.down ? 0.16 : control.hovered ? 0.12 : 0.07)
+        Rectangle {
+            visible: control.fill >= 0
+            width: parent.width * Math.max(0, Math.min(1, control.fill))
+            height: parent.height
+            radius: parent.radius
+            color: Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.45)
+            Behavior on width { NumberAnimation { duration: 250 } }
+        }
     }
 }

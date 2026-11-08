@@ -22,8 +22,10 @@ jumps to that track. The player remembers where each episode stopped,
 streamed or saved, and picks up there next time. MP3s saved by earlier
 versions still count as saved and play too.
 
-Downloads run one at a time. Episodes already saved are never overwritten,
-and an unfinished download never carries the real file name.
+Downloads run one at a time. While one runs, its row's button fills up as a
+progress bar (click it to cancel), and the top bar shows how many are going.
+Episodes already saved are never overwritten, and an unfinished download
+never carries the real file name.
 
 It uses NTS's public API for shows, episodes, and tracklists, `yt-dlp` to
 fetch the audio from wherever NTS hosts it (SoundCloud or Mixcloud), and
@@ -65,7 +67,6 @@ repository's GitHub releases. They're built for x86_64.
 | `M` | Load more episodes |
 | `X` | Cancel the running download |
 | `R` | Retry failed downloads |
-| `C` | Clear finished downloads |
 | `O` | Open the download folder |
 | `,` | Change the download folder |
 | `Esc` | Leave the link field |
