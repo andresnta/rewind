@@ -13,7 +13,7 @@ Popup {
     onClosed: if (parent && parent.ApplicationWindow.window) parent.ApplicationWindow.window.contentItem.forceActiveFocus()
     Material.roundedScale: theme.radius
 
-    background: Rectangle { color: "#16161a"; radius: theme.radius; border.color: "#26262c" }
+    background: Rectangle { color: theme.background; radius: theme.radius; border.color: Qt.rgba(1, 1, 1, 0.08) }
 
     readonly property var keys: [
         ["Ctrl+L", qsTr("Paste or type a link")],

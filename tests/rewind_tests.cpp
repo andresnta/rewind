@@ -351,6 +351,30 @@ private slots:
         QCOMPARE(theme.accentForeground(), QString("white"));
     }
 
+    void themeFollowsGlassyWindows()
+    {
+        // The layout Omarchy uses: state/omarchy/current/theme and
+        // state/omarchy/toggles/hypr side by side.
+        QTemporaryDir dir;
+        const QString current = dir.filePath("current");
+        QDir().mkpath(current + "/theme");
+        QDir().mkpath(dir.filePath("toggles/hypr"));
+        write(current + "/theme/colors.toml", "accent = \"#7aa2f7\"\ndark_background = \"#13141c\"\nbackground = \"#1a1b26\"\n");
+
+        Theme theme(current);
+        QCOMPARE(theme.background(), QString("#1a1b26"));
+        QVERIFY(!theme.glassy());
+        QCOMPARE(theme.glassOpacity(), 0.65);
+
+        // Turning glassy on, and the terminals' own glass level, apply live.
+        write(current + "/theme/foot.ini", "[colors]\nalpha=0.8\n");
+        write(dir.filePath("toggles/hypr/window-glassy.lua"), "-- glassy\n");
+        QTRY_VERIFY(theme.glassy());
+        QTRY_COMPARE(theme.glassOpacity(), 0.8);
+        QFile::remove(dir.filePath("toggles/hypr/window-glassy.lua"));
+        QTRY_VERIFY(!theme.glassy());
+    }
+
     void themeFollowsHyprlandRounding()
     {
         QTemporaryDir dir;

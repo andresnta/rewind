@@ -74,8 +74,10 @@ bin/test      # Qt Test, offscreen
 bin/install   # makepkg -fsi, so it shows up in the app launcher
 ```
 
-Rewind follows the Omarchy theme accent and window rounding, and the
-language picked under Setup > Language (English, Danish, German, and
+Rewind follows the Omarchy theme (background, accent, and window rounding),
+turns see-through like the terminals when windows are set to Glassy, so
+Hyprland's blur shows through, and follows the language picked under
+Setup > Language (English, Danish, German, and
 Mexican Spanish so far).
 
 ## License

@@ -19,7 +19,7 @@ Button {
         implicitWidth: 72
         implicitHeight: 40
         radius: Math.min(6, theme.radius)
-        color: !control.enabled ? "#232328"
+        color: !control.enabled ? Qt.rgba(1, 1, 1, 0.08)
              : control.down ? Qt.darker(theme.accent, 1.15)
              : control.hovered ? Qt.lighter(theme.accent, 1.08) : theme.accent
     }

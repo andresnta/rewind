@@ -14,6 +14,8 @@
 Theme::Theme(const QString &directory, QObject *parent, const QString &hyprctl)
     : QObject(parent),
       m_directory(directory.isEmpty() ? QDir::homePath() + "/.local/state/omarchy/current" : directory) {
+    // Omarchy's toggles sit beside "current": state/omarchy/toggles/hypr.
+    m_toggles = QFileInfo(m_directory).absolutePath() + "/toggles/hypr";
     m_debounce.setSingleShot(true);
     m_debounce.setInterval(80);
     connect(&m_watcher, &QFileSystemWatcher::directoryChanged, this, [this] { m_debounce.start(); });
@@ -61,6 +63,32 @@ void Theme::refreshRounding() {
     m_roundingTimeout.start();
 }
 
+QString Theme::readColor(const QString &path, const QString &name, const QString &fallback) {
+    QFile file(path);
+    if (file.open(QIODevice::ReadOnly)) {
+        const QRegularExpression expression(
+            QString(R"re(^\s*%1\s*=\s*["'](#[0-9a-fA-F]{6})["'])re").arg(QRegularExpression::escape(name)),
+            QRegularExpression::MultilineOption);
+        const auto match = expression.match(QString::fromUtf8(file.readAll()));
+        if (match.hasMatch())
+            return match.captured(1);
+    }
+    return fallback;
+}
+
+double Theme::readGlassOpacity(const QString &themeDirectory) {
+    QFile file(themeDirectory + "/foot.ini");
+    if (file.open(QIODevice::ReadOnly)) {
+        const QRegularExpression expression(R"(^\s*alpha\s*=\s*([0-9.]+))", QRegularExpression::MultilineOption);
+        const auto match = expression.match(QString::fromUtf8(file.readAll()));
+        bool ok = false;
+        const double value = match.captured(1).toDouble(&ok);
+        if (match.hasMatch() && ok && value > 0.2 && value <= 1.0)
+            return value;
+    }
+    return 0.65;
+}
+
 QString Theme::readAccent(const QString &path) {
     QFile file(path);
     if (file.open(QIODevice::ReadOnly)) {
@@ -94,15 +122,22 @@ void Theme::reload() {
     while (!QFileInfo::exists(ancestor) && ancestor != "/")
         ancestor = QFileInfo(ancestor).absolutePath();
     QStringList candidates{ancestor, QFileInfo(ancestor).absolutePath(), m_directory,
-                           m_directory + "/theme", m_directory + "/theme/colors.toml"};
+                           m_directory + "/theme", m_directory + "/theme/colors.toml",
+                           m_toggles, m_toggles + "/window-glassy.lua"};
     candidates.removeDuplicates();
     for (const auto &path : candidates)
         if (QFileInfo::exists(path))
             m_watcher.addPath(path);
 
     const auto accent = readAccent(m_directory + "/theme/colors.toml");
-    if (accent != m_accent) {
+    const auto background = readColor(m_directory + "/theme/colors.toml", "background", "#0e0e10");
+    const bool glassy = QFileInfo::exists(m_toggles + "/window-glassy.lua");
+    const double opacity = readGlassOpacity(m_directory + "/theme");
+    if (accent != m_accent || background != m_background || glassy != m_glassy || opacity != m_glassOpacity) {
         m_accent = accent;
+        m_background = background;
+        m_glassy = glassy;
+        m_glassOpacity = opacity;
         emit changed();
     }
 }

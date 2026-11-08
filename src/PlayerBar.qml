@@ -35,9 +35,9 @@ Rectangle {
     readonly property var track: trackIndex >= 0 ? tracks[trackIndex] : null
 
     implicitHeight: 72
-    color: "#16161a"
+    color: Qt.rgba(1, 1, 1, 0.035)
     radius: theme.radius
-    border.color: "#26262c"
+    border.color: Qt.rgba(1, 1, 1, 0.08)
 
     function label(t) {
         return !t ? "" : t.artist && t.title ? t.artist + " – " + t.title : (t.title || t.artist)
@@ -180,7 +180,7 @@ Rectangle {
             Layout.preferredWidth: 48
             Layout.preferredHeight: 48
             radius: Math.min(4, theme.radius)
-            color: "#26262c"
+            color: Qt.rgba(1, 1, 1, 0.06)
             clip: true
             Image {
                 anchors.fill: parent
@@ -356,7 +356,7 @@ Rectangle {
         padding: 0
         focus: true
         Material.roundedScale: theme.radius
-        background: Rectangle { color: "#16161a"; radius: theme.radius; border.color: "#26262c" }
+        background: Rectangle { color: theme.background; radius: theme.radius; border.color: Qt.rgba(1, 1, 1, 0.08) }
         onOpened: list.positionViewAtIndex(Math.max(0, bar.trackIndex), ListView.Center)
 
         ColumnLayout {

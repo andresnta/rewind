@@ -40,7 +40,7 @@ Rectangle {
             Layout.preferredWidth: 40
             Layout.preferredHeight: 40
             radius: Math.min(4, theme.radius)
-            color: "#26262c"
+            color: Qt.rgba(1, 1, 1, 0.06)
             clip: true
             Image {
                 anchors.fill: parent
@@ -70,33 +70,36 @@ Rectangle {
             }
         }
 
-        // What's happened to it, or a way to start.
-        Label {
-            visible: model.status !== "" || !model.hasAudio
-            color: model.status === "failed" ? "#ff8a80" : model.status === "done" ? theme.accent : "#8a8a93"
-            font.pixelSize: 12
-            text: !model.hasAudio ? qsTr("No audio")
-                : row.playing ? qsTr("Playing")
-                : model.status === "done" ? qsTr("Saved")
-                : model.status === "downloading" ? qsTr("Downloading")
-                : model.status === "waiting" ? qsTr("Queued")
-                : model.status === "failed" ? qsTr("Failed") : ""
-        }
-        Button {
+        // Two fixed slots, so every row's buttons line up: play, then
+        // download or what's happened to it. A saved episode's Play is filled.
+        RowButton {
+            Layout.preferredWidth: 84
             visible: model.hasAudio
-            flat: true
+            vivid: model.status === "done"
             text: row.playing ? qsTr("Pause") : qsTr("Play")
-            font.pixelSize: 13
             onClicked: row.play()
         }
-        Button {
-            visible: model.hasAudio && (model.status === "" || model.status === "failed")
-            flat: true
-            text: model.status === "failed" ? qsTr("Retry") : qsTr("Download")
-            font.pixelSize: 13
-            onClicked: { row.picked(); row.download() }
+        Item {
+            Layout.preferredWidth: 96
+            Layout.preferredHeight: 32
+            RowButton {
+                anchors.fill: parent
+                visible: model.hasAudio && (model.status === "" || model.status === "failed")
+                text: model.status === "failed" ? qsTr("Retry") : qsTr("Download")
+                onClicked: { row.picked(); row.download() }
+            }
+            Label {
+                anchors.centerIn: parent
+                visible: !model.hasAudio || (model.status !== "" && model.status !== "failed")
+                font.pixelSize: 12
+                color: model.status === "done" ? theme.accent : "#8a8a93"
+                text: !model.hasAudio ? qsTr("No audio")
+                    : model.status === "done" ? qsTr("Saved")
+                    : model.status === "downloading" ? qsTr("Downloading")
+                    : model.status === "waiting" ? qsTr("Queued") : ""
+            }
         }
     }
 
-    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#1f1f24" }
+    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.05) }
 }

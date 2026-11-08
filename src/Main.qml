@@ -11,20 +11,27 @@ ApplicationWindow {
     minimumHeight: 480
     visible: true
     title: backend.archive.showName ? qsTr("%1 — Rewind").arg(backend.archive.showName) : "Rewind"
-    color: "#0e0e10"
+    // The theme's background, see-through like the terminals when Omarchy's
+    // windows are glassy, so Hyprland's blur shows through.
+    readonly property color base: theme.background
+    color: theme.glassy ? Qt.rgba(base.r, base.g, base.b, theme.glassOpacity) : base
 
     Material.theme: Material.Dark
     Material.accent: theme.accent
     Material.roundedScale: theme.radius
-    Material.background: "#0e0e10"
+    Material.background: theme.background
 
-    readonly property color panel: "#16161a"
-    readonly property color line: "#26262c"
+    // Panels tint whatever is behind them rather than covering it.
+    readonly property color panel: Qt.rgba(1, 1, 1, 0.035)
+    readonly property color line: Qt.rgba(1, 1, 1, 0.08)
     readonly property color dim: "#8a8a93"
     // Letter shortcuts stand aside while the user is typing.
     readonly property bool typing: linkField.activeFocus || folderField.activeFocus
     readonly property bool overlay: help.visible || settings.visible || quitDialog.visible
     property bool quitting: false
+    readonly property int queueWidth: 340
+    // Where every link starts, so pasting a show's name is all that's left.
+    readonly property string linkPrefix: "nts.live/shows/"
     property string pendingAlias: ""
 
     function openLink() {
@@ -115,7 +122,9 @@ ApplicationWindow {
             linkField.text = initialLink
             openLink()
         } else {
+            linkField.text = win.linkPrefix
             linkField.forceActiveFocus()
+            linkField.cursorPosition = linkField.text.length
         }
     }
 
@@ -160,10 +169,11 @@ ApplicationWindow {
             anchors.margins: 16
             spacing: 12
 
-            // The link bar.
+            // The link bar, split like the panels below it: the field spans the
+            // episode list, the buttons sit over the downloads.
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 10
+                spacing: 12
 
                 TextField {
                     id: linkField
@@ -172,27 +182,32 @@ ApplicationWindow {
                     selectByMouse: true
                     onAccepted: win.openLink()
                 }
-                AccentButton {
-                    text: qsTr("Open")
-                    enabled: linkField.text.trim() !== ""
-                    onClicked: win.openLink()
-                }
-                Button {
-                    flat: true
-                    text: backend.displayDirectory
-                    font.pixelSize: 13
-                    Layout.maximumWidth: 220
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Change where episodes are saved (,)")
-                    onClicked: settings.open()
-                }
-                Button {
-                    flat: true
-                    text: "?"
-                    Layout.preferredWidth: 44
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Keyboard shortcuts")
-                    onClicked: help.open()
+                RowLayout {
+                    Layout.preferredWidth: win.queueWidth
+                    Layout.maximumWidth: win.queueWidth
+                    spacing: 6
+                    AccentButton {
+                        text: qsTr("Open")
+                        enabled: linkField.text.trim() !== "" && linkField.text.trim() !== win.linkPrefix
+                        onClicked: win.openLink()
+                    }
+                    Button {
+                        flat: true
+                        Layout.fillWidth: true
+                        text: backend.displayDirectory
+                        font.pixelSize: 13
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Change where episodes are saved (,)")
+                        onClicked: settings.open()
+                    }
+                    Button {
+                        flat: true
+                        text: "?"
+                        Layout.preferredWidth: 44
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Keyboard shortcuts")
+                        onClicked: help.open()
+                    }
                 }
             }
 
@@ -394,7 +409,7 @@ ApplicationWindow {
 
                 // The queue.
                 Rectangle {
-                    Layout.preferredWidth: 340
+                    Layout.preferredWidth: win.queueWidth
                     Layout.fillHeight: true
                     color: win.panel
                     radius: theme.radius
@@ -490,7 +505,7 @@ ApplicationWindow {
             settings.close()
         }
 
-        background: Rectangle { color: win.panel; radius: theme.radius; border.color: win.line }
+        background: Rectangle { color: theme.background; radius: theme.radius; border.color: win.line }
 
         ColumnLayout {
             anchors.fill: parent
@@ -528,7 +543,7 @@ ApplicationWindow {
         width: Math.min(460, win.width - 80)
         title: qsTr("Stop downloading?")
         Material.roundedScale: theme.radius
-        background: Rectangle { color: win.panel; radius: theme.radius; border.color: win.line }
+        background: Rectangle { color: theme.background; radius: theme.radius; border.color: win.line }
         Label {
             anchors.left: parent.left
             anchors.right: parent.right

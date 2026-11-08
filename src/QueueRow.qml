@@ -54,16 +54,18 @@ Item {
                     font.pixelSize: 12
                 }
             }
-            Button {
-                flat: true
+            RowButton {
+                implicitWidth: 64
+                implicitHeight: 28
                 font.pixelSize: 12
+                vivid: true
                 visible: model.state === row.done && model.path !== ""
                 text: row.playing ? qsTr("Pause") : qsTr("Play")
                 onClicked: row.play()
             }
-            Button {
-                flat: true
-                Layout.preferredWidth: implicitWidth
+            RowButton {
+                implicitWidth: 64
+                implicitHeight: 28
                 font.pixelSize: 12
                 visible: row.active || model.state === row.failed || model.state === row.cancelled
                          || (model.state === row.done && model.path !== "")
@@ -99,5 +101,5 @@ Item {
         }
     }
 
-    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#1f1f24" }
+    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Qt.rgba(1, 1, 1, 0.05) }
 }

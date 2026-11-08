@@ -5,6 +5,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QQuickWindow>
 #include <QUrl>
 
 #include "backend.h"
@@ -25,7 +26,7 @@ int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
     app.setApplicationName("rewind");
     app.setOrganizationName("rewind");
-    app.setApplicationVersion("0.3.0");
+    app.setApplicationVersion("0.3.1");
     if (command)
         return Cli::run(arguments);
 
@@ -42,6 +43,8 @@ int main(int argc, char *argv[]) {
     app.setWindowIcon(QIcon::fromTheme("rewind"));
 
     QQuickStyle::setStyle("Material");
+    // A see-through window needs an alpha channel, for Omarchy's glassy mode.
+    QQuickWindow::setDefaultAlphaBuffer(true);
 
     // Installed before anything is translated, and every qsTr() binding is
     // re-evaluated when the Omarchy language changes.
