@@ -1,11 +1,11 @@
 pkgname=rewind
-pkgver=0.4.1
+pkgver=0.4.2
 pkgrel=1
 pkgdesc='Stream, save, and play past NTS Radio episodes'
 arch=('x86_64' 'aarch64')
 license=('MIT')
 url='https://github.com/andresnta/rewind'
-depends=('qt6-base' 'qt6-declarative' 'qt6-multimedia' 'qt6-wayland' 'yt-dlp' 'ffmpeg')
+depends=('qt6-base>=6.12' 'qt6-declarative>=6.12' 'qt6-multimedia>=6.12' 'qt6-wayland>=6.12' 'yt-dlp' 'ffmpeg')
 makedepends=('gcc' 'make')
 # The repository ships one package; no separate debug symbols.
 options=('!debug')

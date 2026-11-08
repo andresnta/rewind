@@ -43,10 +43,11 @@ SigLevel = Optional TrustAll
 Server = https://github.com/andresnta/rewind/releases/download/repo
 ```
 
-Then install it, and later updates come with every `pacman -Syu`:
+Then install it with a full upgrade, so Qt is as new as Rewind needs
+(6.12), and later updates come with every `pacman -Syu`:
 
 ```sh
-sudo pacman -Sy rewind
+sudo pacman -Syu rewind
 ```
 
 The packages aren't signed, so pacman takes them on trust from this
