@@ -9,6 +9,8 @@ Rectangle {
     property bool current: false
     property string dateText: ""
     property bool playing: false
+    // Room at the right edge, more of it while the list's scroll bar shows.
+    property real endMargin: 12
     signal picked()
     signal download()
     signal play()
@@ -34,7 +36,7 @@ Rectangle {
     RowLayout {
         anchors.fill: parent
         anchors.leftMargin: 16
-        anchors.rightMargin: 12
+        anchors.rightMargin: row.endMargin
         spacing: 14
 
         Rectangle {

@@ -212,6 +212,10 @@ ApplicationWindow {
                         HoverHandler { id: downloadsHover }
                     }
                     AccentButton {
+                        // As tall as the field beside it, edge to edge.
+                        Layout.preferredHeight: linkField.height
+                        topInset: 0
+                        bottomInset: 0
                         text: qsTr("Open")
                         enabled: linkField.text.trim() !== "" && linkField.text.trim() !== win.linkPrefix
                         onClicked: win.openLink()
@@ -356,11 +360,13 @@ ApplicationWindow {
                             keyNavigationEnabled: false
                             highlightMoveDuration: 0
                             boundsBehavior: Flickable.StopAtBounds
-                            ScrollBar.vertical: ScrollBar {}
+                            ScrollBar.vertical: ScrollBar { id: episodesBar }
                             focus: true
 
                             delegate: EpisodeRow {
                                 width: episodes.width
+                                // Clear of the scroll bar whenever there's one to show.
+                                endMargin: 12 + (episodesBar.size < 1 ? episodesBar.width + 4 : 0)
                                 current: ListView.isCurrentItem
                                 dateText: win.formatDate(model.date)
                                 onPicked: episodes.currentIndex = index
