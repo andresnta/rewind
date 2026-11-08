@@ -1,0 +1,55 @@
+#!/bin/sh
+# Builds the package and publishes it to rewind's pacman repository: the
+# GitHub release tagged "repo", whose assets are the package and the repo
+# database. Machines that list it in /etc/pacman.conf get it with pacman.
+#
+#   [rewind]
+#   SigLevel = Optional TrustAll
+#   Server = https://github.com/<owner>/rewind/releases/download/repo
+set -eu
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+REPO="$(cd "$ROOT" && gh repo view --json nameWithOwner -q .nameWithOwner)"
+TAG=repo
+
+# Only committed, pushed work gets published, so the package matches the
+# source anyone can read.
+if [ -n "$(git -C "$ROOT" status --porcelain)" ]; then
+  echo "Commit your changes before releasing." >&2
+  exit 1
+fi
+git -C "$ROOT" push -q origin HEAD
+
+"$ROOT/bin/test"
+cd "$ROOT/pkgbuild"
+makepkg -f --noconfirm
+PKG="$(makepkg --packagelist | head -n 1)"
+[ -f "$PKG" ] || { echo "makepkg didn't produce $PKG" >&2; exit 1; }
+
+WORK="$(mktemp -d)"
+trap 'rm -rf -- "$WORK"' EXIT
+
+if ! gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then
+  gh release create "$TAG" -R "$REPO" --title "Package repository" \
+    --notes "rewind's pacman repository. See the README for how to add it to /etc/pacman.conf."
+fi
+
+# Start from the published database, so it keeps describing the repository
+# as it is, then add this package to it.
+gh release download "$TAG" -R "$REPO" -D "$WORK" -p 'rewind.db.tar.gz' -p 'rewind.files.tar.gz' 2>/dev/null || true
+cp "$PKG" "$WORK/"
+repo-add -q -n -R "$WORK/rewind.db.tar.gz" "$WORK/$(basename "$PKG")"
+
+# GitHub assets can't be symlinks, so the names pacman asks for are copies.
+cp "$WORK/rewind.db.tar.gz" "$WORK/rewind.db"
+cp "$WORK/rewind.files.tar.gz" "$WORK/rewind.files"
+gh release upload "$TAG" -R "$REPO" --clobber \
+  "$WORK/$(basename "$PKG")" "$WORK/rewind.db" "$WORK/rewind.db.tar.gz" \
+  "$WORK/rewind.files" "$WORK/rewind.files.tar.gz"
+
+# Older packages are no longer in the database; take them down.
+gh release view "$TAG" -R "$REPO" --json assets -q '.assets[].name' |
+  grep '\.pkg\.tar\.' | grep -vxF "$(basename "$PKG")" |
+  while read -r old; do gh release delete-asset "$TAG" "$old" -R "$REPO" -y; done
+
+echo "Published $(basename "$PKG") to https://github.com/$REPO/releases/tag/$TAG"

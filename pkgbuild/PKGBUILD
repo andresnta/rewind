@@ -4,8 +4,11 @@ pkgrel=1
 pkgdesc='Stream, save, and play past NTS Radio episodes'
 arch=('x86_64' 'aarch64')
 license=('MIT')
+url='https://github.com/andresnta/rewind'
 depends=('qt6-base' 'qt6-declarative' 'qt6-multimedia' 'qt6-wayland' 'yt-dlp' 'ffmpeg')
 makedepends=('gcc' 'make')
+# The repository ships one package; no separate debug symbols.
+options=('!debug')
 source=()
 sha256sums=()
 

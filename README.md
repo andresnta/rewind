@@ -30,6 +30,26 @@ fetch the audio from wherever NTS hosts it (SoundCloud or Mixcloud), and
 `ffmpeg` to wrap it with the tags and artwork. The audio belongs to NTS and its hosts; Rewind is
 for personal offline listening, not redistribution.
 
+## Install
+
+Rewind has its own pacman repository. On each machine, add it to
+`/etc/pacman.conf`:
+
+```ini
+[rewind]
+SigLevel = Optional TrustAll
+Server = https://github.com/andresnta/rewind/releases/download/repo
+```
+
+Then install it, and later updates come with every `pacman -Syu`:
+
+```sh
+sudo pacman -Sy rewind
+```
+
+The packages aren't signed, so pacman takes them on trust from this
+repository's GitHub releases. They're built for x86_64.
+
 ## Shortcuts
 
 | Key | Action |
@@ -72,6 +92,7 @@ all part of Omarchy or one `omarchy-pkg-add` away.
 bin/build     # build/rewind
 bin/test      # Qt Test, offscreen
 bin/install   # makepkg -fsi, so it shows up in the app launcher
+bin/release   # test, build, and publish to the pacman repository
 ```
 
 Rewind follows the Omarchy theme (background, accent, and window rounding),
