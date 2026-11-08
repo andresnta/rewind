@@ -40,7 +40,9 @@ gh release download "$TAG" -R "$REPO" -D "$WORK" -p 'rewind.db.tar.gz' -p 'rewin
 cp "$PKG" "$WORK/"
 repo-add -q -n -R "$WORK/rewind.db.tar.gz" "$WORK/$(basename "$PKG")"
 
-# GitHub assets can't be symlinks, so the names pacman asks for are copies.
+# GitHub assets can't be symlinks, and repo-add makes rewind.db and
+# rewind.files symlinks to the archives; replace them with copies.
+rm -f -- "${WORK:?}/rewind.db" "${WORK:?}/rewind.files"
 cp "$WORK/rewind.db.tar.gz" "$WORK/rewind.db"
 cp "$WORK/rewind.files.tar.gz" "$WORK/rewind.files"
 gh release upload "$TAG" -R "$REPO" --clobber \
