@@ -42,6 +42,8 @@ ApplicationWindow {
         const match = parsed.match(/\/episodes\/([A-Za-z0-9_-]+)/)
         win.pendingAlias = match ? match[1].toLowerCase() : ""
         if (backend.open(parsed)) {
+            // Show the link that was opened, tidied, in place of what was typed.
+            linkField.text = backend.linkText(parsed)
             episodes.forceActiveFocus()
             selectPending()
         }

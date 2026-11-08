@@ -42,6 +42,8 @@ public:
     // Opens a show's archive, and queues the episode too when the link is
     // one. Returns false, with a message, when the text isn't an NTS link.
     Q_INVOKABLE bool open(const QString &text);
+    // The link the text names, tidied for the address bar, or "".
+    Q_INVOKABLE QString linkText(const QString &text) const;
     Q_INVOKABLE void openFolder() const;
     Q_INVOKABLE void checkTools();
     Q_INVOKABLE void clearMessage();

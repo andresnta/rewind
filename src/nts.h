@@ -59,6 +59,8 @@ struct Show {
 // Accepts any nts.live show or episode link, with or without the scheme,
 // query, or trailing slash, and a bare show alias.
 Link parseLink(const QString &text);
+// "nts.live/shows/<show>[/episodes/<episode>]", the link as it's shown.
+QString linkText(const Link &link);
 
 // The API's base, "https://www.nts.live/api/v2". Tests point it at a local
 // directory of saved responses.

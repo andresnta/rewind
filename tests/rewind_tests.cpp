@@ -36,6 +36,13 @@ private slots:
         QVERIFY(!Nts::parseLink("https://example.com/shows/x").isValid());
         QVERIFY(!Nts::parseLink("not a link").isValid());
         QVERIFY(!Nts::parseLink("").isValid());
+
+        // A full link pasted after the prefilled prefix is the one meant.
+        link = Nts::parseLink("nts.live/shows/https://www.nts.live/shows/floating-points/episodes/fp-1");
+        QCOMPARE(link.show, QString("floating-points"));
+        QCOMPARE(link.episode, QString("fp-1"));
+        QCOMPARE(Nts::linkText(link), QString("nts.live/shows/floating-points/episodes/fp-1"));
+        QCOMPARE(Nts::linkText(Nts::parseLink("nts.live/shows/floating-points")), QString("nts.live/shows/floating-points"));
     }
 
     void readsEpisodes()

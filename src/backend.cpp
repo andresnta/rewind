@@ -25,6 +25,10 @@ Backend::Backend(const QString &directory, const Tools &tools, QObject *parent)
     m_queue.setDirectory(m_directory);
 
     connect(&m_queue, &Queue::statusesChanged, &m_archive, &Archive::refreshStatuses);
+    connect(&m_archive, &Archive::loadingChanged, this, [this] {
+        if (!m_archive.loading() && !m_archive.error().isEmpty() && m_archive.rowCount() == 0)
+            setMessage(m_archive.error());
+    });
 
     m_positions = m_persist ? std::make_unique<QSettings>(QSettings::IniFormat, QSettings::UserScope, "rewind", "positions")
                             : std::make_unique<QSettings>(m_directory + "/.rewind-positions.ini", QSettings::IniFormat);
@@ -235,6 +239,11 @@ bool Backend::open(const QString &text)
             setMessage(tr("That episode is already in the queue."));
     }
     return true;
+}
+
+QString Backend::linkText(const QString &text) const
+{
+    return Nts::linkText(Nts::parseLink(text));
 }
 
 void Backend::openFolder() const

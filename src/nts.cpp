@@ -60,7 +60,11 @@ Link parseLink(const QString &input)
     const QString trimmed = input.trimmed();
     static const QRegularExpression link(
         R"((?:^|[/.])nts\.live/shows/([A-Za-z0-9_-]+)(?:/episodes/([A-Za-z0-9_-]+))?)");
-    const auto match = link.match(trimmed);
+    // The last link wins: pasting a full link after the prefilled
+    // "nts.live/shows/" leaves the prefix in front of the real one.
+    QRegularExpressionMatch match;
+    for (auto it = link.globalMatch(trimmed); it.hasNext();)
+        match = it.next();
     if (match.hasMatch())
         return {match.captured(1).toLower(), match.captured(2).toLower()};
 
@@ -68,6 +72,13 @@ Link parseLink(const QString &input)
     if (alias.match(trimmed).hasMatch())
         return {trimmed, {}};
     return {};
+}
+
+QString linkText(const Link &link)
+{
+    if (!link.isValid())
+        return {};
+    return "nts.live/shows/" + link.show + (link.isEpisode() ? "/episodes/" + link.episode : QString());
 }
 
 QUrl showUrl(const QString &show)
